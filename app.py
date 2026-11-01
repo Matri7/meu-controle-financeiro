@@ -137,7 +137,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Gráficos
+    # Gráficos e tabela
     col_g1, col_g2 = st.columns([1.2, 1])
     
     with col_g1:
@@ -187,34 +187,38 @@ elif aba == "Escanear Extrato (IA)":
         if st.button("Processar com IA do Gemini"):
             with st.spinner("Analisando extrato e extraindo transações..."):
                 prompt = """
-                Analise esta imagem de extrato bancário, fatura ou comprovante.
-                Extraia todos os lançamentos financeiros visíveis e retorne APENAS um array JSON puro (sem markdown, sem crases ```json```).
-                Cada objeto da lista deve seguir exatamente esta estrutura:
-                [
-                    {
-                        "data": "AAAA-MM-DD",
-                        "descricao": "Nome do estabelecimento ou transação",
-                        "valor": 12.34,
-                        "tipo": "despesa" ou "receita",
-                        "categoria": "Alimentação" | "Transporte" | "Lazer" | "Serviços" | "Saúde" | "Outros",
-                        "metodo_pagamento": "Crédito" | "Débito" | "Pix" | "Boleto"
-                    }
-                ]
-                Se o ano não estiver legível, assuma 2026. O campo 'valor' deve ser sempre numérico positivo float.
+                Analise esta imagem de extrato bancário, fatura ou comprovante financeiro.
+                Extraia todos os lançamentos financeiros visíveis e responda OBRIGATORIAMENTE em formato JSON com uma lista de objetos.
+                Cada objeto deve conter:
+                - data: no formato AAAA-MM-DD (se não houver ano legível, use o ano atual).
+                - descricao: nome do recebedor, estabelecimento ou operação.
+                - valor: número positivo float (ex: 29.90).
+                - tipo: "despesa" para pagamentos/saídas ou "receita" para recebimentos/entradas.
+                - categoria: uma entre "Alimentação", "Transporte", "Moradia", "Lazer", "Serviços", "Saúde" ou "Outros".
+                - metodo_pagamento: "Pix", "Crédito", "Débito" ou "Boleto".
                 """
                 try:
-                    response = gemini_client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=[img, prompt]
+                    # Configuração para forçar resposta em JSON puro
+                    config = types.GenerateContentConfig(
+                        response_mime_type="application/json"
                     )
                     
-                    texto_limpo = response.text.strip().replace("```json", "").replace("```", "")
-                    dados = json.loads(texto_limpo)
+                    response = gemini_client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=[img, prompt],
+                        config=config
+                    )
+                    
+                    dados = json.loads(response.text)
+
+                    # Garante que dados seja uma lista
+                    if isinstance(dados, dict):
+                        dados = [dados]
 
                     for item in dados:
                         supabase.table("transacoes").insert(item).execute()
 
-                    st.success(f"Sucesso! {len(dados)} transações identificadas e salvas no Supabase.")
+                    st.success(f"Sucesso! {len(dados)} transação(ões) identificada(s) e salva(s) no Supabase.")
                     st.rerun()
 
                 except Exception as e:
@@ -246,3 +250,4 @@ elif aba == "Lançamento Rápido":
             }
             supabase.table("transacoes").insert(payload).execute()
             st.success("Transação salva com sucesso!")
+            st.rerun()
