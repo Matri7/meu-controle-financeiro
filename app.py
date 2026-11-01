@@ -213,7 +213,7 @@ elif aba == "Escanear Extrato (IA)":
             with st.expander("🔍 Clique aqui para ver a imagem ampliada"):
                 st.image(img, use_container_width=True)
 
-        if st.button("Lançar transação"):
+        if st.button("Lançar Transação"):
             with st.spinner("Analisando extrato com a inteligência do Gemini... Aguarde alguns segundos."):
                 prompt = """
                 Analise esta imagem de extrato bancário, fatura ou comprovante financeiro.
