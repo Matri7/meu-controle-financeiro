@@ -178,7 +178,7 @@ def processar_comando_audio(audio_bytes, mime_type="audio/wav"):
 
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=[audio_part, prompt],
             config=config
         )
@@ -368,4 +368,165 @@ elif aba == "Escanear Extrato (IA)":
                 - categoria: uma entre "Alimentação", "Transporte", "Moradia", "Lazer", "Serviços", "Saúde" ou "Outros".
                 - metodo_pagamento: "Pix", "Crédito", "Débito" ou "Boleto".
                 """
-                config =
+                config = types.GenerateContentConfig(response_mime_type="application/json")
+
+                try:
+                    response = gemini_client.models.generate_content(
+                        model='gemini-2.0-flash',
+                        contents=[img, prompt],
+                        config=config
+                    )
+                except Exception:
+                    response = gemini_client.models.generate_content(
+                        model='gemini-3.8-flash',
+                        contents=[img, prompt],
+                        config=config
+                    )
+
+                try:
+                    dados = json.loads(response.text)
+                    if isinstance(dados, dict):
+                        dados = [dados]
+                    st.session_state["dados_extraidos"] = dados
+                    st.toast("Leitura concluída com sucesso!", icon="✅")
+                except Exception as e:
+                    st.error(f"Erro ao interpretar dados da IA: {e}")
+
+    if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]:
+        st.markdown("---")
+        st.markdown("### 📋 Prévia das Transações Identificadas")
+        st.caption("Confira as informações antes de salvar definitivamente no seu banco de dados.")
+
+        df_previa = pd.DataFrame(st.session_state["dados_extraidos"]).copy()
+        df_previa_exibicao = df_previa.copy()
+        df_previa_exibicao["data"] = df_previa_exibicao["data"].apply(formatar_data_br)
+        df_previa_exibicao.rename(columns={
+            "data": "Data",
+            "descricao": "Descrição",
+            "categoria": "Categoria",
+            "tipo": "Tipo",
+            "valor": "Valor (R$)",
+            "metodo_pagamento": "Método"
+        }, inplace=True)
+        
+        st.dataframe(df_previa_exibicao, use_container_width=True, hide_index=True)
+
+        col_c1, col_c2 = st.columns([1, 4])
+        with col_c1:
+            if st.button("Confirmar e Salvar"):
+                itens_salvos = 0
+                itens_duplicados = 0
+
+                for item in st.session_state["dados_extraidos"]:
+                    duplicado = supabase.table("transacoes").select("id")\
+                        .eq("data", item["data"])\
+                        .eq("descricao", item["descricao"])\
+                        .eq("valor", item["valor"])\
+                        .execute()
+
+                    if duplicado.data and len(duplicado.data) > 0:
+                        itens_duplicados += 1
+                    else:
+                        supabase.table("transacoes").insert(item).execute()
+                        itens_salvos += 1
+
+                if itens_salvos > 0 and itens_duplicados == 0:
+                    st.session_state["mensagem_status"] = {
+                        "tipo": "success",
+                        "texto": f"✅ Sucesso! {itens_salvos} transação(ões) salva(s) no banco de dados."
+                    }
+                elif itens_salvos > 0 and itens_duplicados > 0:
+                    st.session_state["mensagem_status"] = {
+                        "tipo": "warning",
+                        "texto": f"⚠️ {itens_salvos} transação(ões) salva(s), mas {itens_duplicados} lançamento(s) foram ignorados por já estarem cadastrados."
+                    }
+                elif itens_duplicados > 0 and itens_salvos == 0:
+                    st.session_state["mensagem_status"] = {
+                        "tipo": "warning",
+                        "texto": f"⚠️ Transação duplicada: todos os {itens_duplicados} lançamento(s) deste comprovante já existem no seu banco de dados com a mesma data, valor e descrição."
+                    }
+
+                st.session_state["dados_extraidos"] = []
+                st.session_state["uploader_key"] += 1
+                st.rerun()
+
+        with col_c2:
+            if st.button("Descartar Leitura"):
+                st.session_state["dados_extraidos"] = []
+                st.session_state["uploader_key"] += 1
+                st.session_state["mensagem_status"] = {
+                    "tipo": "info",
+                    "texto": "ℹ️ Leitura descartada sem salvar nenhuma alteração."
+                }
+                st.rerun()
+
+# ----------------- ABA 3: LANÇAMENTO RÁPIDO -----------------
+elif aba == "Lançamento Rápido":
+    st.subheader("Novo Lançamento")
+    
+    st.markdown("#### 🎙️ Entrada Inteligente com IA")
+    st.caption("Fale no gravador ou digite uma frase informal.")
+    
+    opcao_aba3 = st.radio("Método de entrada:", ["Digitar Texto", "Gravar Áudio"], horizontal=True, key="modo_aba3")
+
+    if opcao_aba3 == "Digitar Texto":
+        col_l1, col_l2 = st.columns([4, 1])
+        with col_l1:
+            frase_manual = st.text_input(
+                "Texto livre:",
+                placeholder="Ex: Gastei 25 reais no uber hoje de manhã no crédito...",
+                key="input_frase_aba3"
+            )
+        with col_l2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            btn_manual = st.button("Lançar com IA", key="btn_frase_aba3")
+
+        if btn_manual and frase_manual.strip():
+            with st.spinner("Processando..."):
+                ok, msg = processar_comando_texto(frase_manual)
+                if ok:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.warning(msg)
+
+    elif opcao_aba3 == "Gravar Áudio":
+        audio_aba3 = st.audio_input("Grave sua mensagem de voz:", key="audio_input_aba3")
+        if audio_aba3 is not None:
+            if st.button("Processar Áudio", key="btn_proc_audio_aba3"):
+                with st.spinner("Processando áudio com IA..."):
+                    audio_bytes = audio_aba3.read()
+                    ok, msg = processar_comando_audio(audio_bytes, mime_type="audio/wav")
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.warning(msg)
+
+    st.markdown("---")
+    
+    st.markdown("#### 📝 Lançamento Manual Estruturado")
+    with st.form("form_transacao"):
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            desc = st.text_input("Descrição (Ex: Padaria, Salário)")
+            valor = st.number_input("Valor (R$)", min_value=0.01, step=1.00)
+            data_t = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
+        with col_f2:
+            tipo = st.selectbox("Tipo", ["despesa", "receita"])
+            categoria = st.selectbox("Categoria", ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"])
+            metodo = st.selectbox("Método de Pagamento", ["Pix", "Crédito", "Débito", "Dinheiro"])
+        
+        submit = st.form_submit_button("Salvar Manualmente")
+        if submit:
+            payload = {
+                "descricao": desc,
+                "valor": valor,
+                "data": str(data_t),
+                "tipo": tipo,
+                "categoria": categoria,
+                "metodo_pagamento": metodo
+            }
+            supabase.table("transacoes").insert(payload).execute()
+            st.success("Transação salva com sucesso!")
+            st.rerun()
