@@ -197,26 +197,24 @@ elif aba == "Escanear Extrato (IA)":
                 - categoria: uma entre "Alimentação", "Transporte", "Moradia", "Lazer", "Serviços", "Saúde" ou "Outros".
                 - metodo_pagamento: "Pix", "Crédito", "Débito" ou "Boleto".
                 """
+                # Configuração para forçar resposta em JSON puro
+                config = types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+
                 try:
-                    # Configuração para forçar resposta em JSON puro
-                    config = types.GenerateContentConfig(
-                        response_mime_type="application/json"
+                    response = gemini_client.models.generate_content(
+                        model='gemini-2.0-flash',
+                        contents=[img, prompt],
+                        config=config
                     )
-                    
-                 try:   
-        response = gemini_client.models.generate_content(
-        model='gemini-3.8-flash',
-        contents=[img, prompt],
-        config=config
-    )
-    except Exception:
-    # Se o modelo principal estiver sobrecarregado (503), tenta o modelo estável alternativo
-    response = gemini_client.models.generate_content(
-        model='gemini-2.0-flash',
-        contents=[img, prompt],
-        config=config
-    )
-                    
+                except Exception:
+                    # Se o modelo principal falhar, tenta o alternativo
+                    response = gemini_client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=[img, prompt],
+                        config=config
+                    )         
                     
                     dados = json.loads(response.text)
 
