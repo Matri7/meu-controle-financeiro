@@ -203,11 +203,20 @@ elif aba == "Escanear Extrato (IA)":
                         response_mime_type="application/json"
                     )
                     
-                    response = gemini_client.models.generate_content(
-                        model='gemini-3.8-flash',
-                        contents=[img, prompt],
-                        config=config
-                    )
+                    try:
+        response = gemini_client.models.generate_content(
+        model='gemini-3.8-flash',
+        contents=[img, prompt],
+        config=config
+    )
+    except Exception:
+    # Se o modelo principal estiver sobrecarregado (503), tenta o modelo estável alternativo
+    response = gemini_client.models.generate_content(
+        model='gemini-2.0-flash',
+        contents=[img, prompt],
+        config=config
+    )
+                    
                     
                     dados = json.loads(response.text)
 
