@@ -203,6 +203,7 @@ elif aba == "Escanear Extrato (IA)":
                         response_mime_type="application/json"
                     )
                     
+                 try:   
         response = gemini_client.models.generate_content(
         model='gemini-3.8-flash',
         contents=[img, prompt],
