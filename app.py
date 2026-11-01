@@ -192,13 +192,28 @@ elif aba == "Escanear Extrato (IA)":
     st.subheader("Leitor Inteligente de Extratos e Prints")
     st.caption("Suba o print de uma fatura, extrato bancário ou comprovante Pix.")
 
-    uploaded_file = st.file_uploader("Escolha a imagem", type=["png", "jpg", "jpeg"])
+    # Controle de limpeza automática do uploader
+    if "uploader_key" not in st.session_state:
+        st.session_state["uploader_key"] = 0
+
+    uploaded_file = st.file_uploader(
+        "Escolha a imagem", 
+        type=["png", "jpg", "jpeg"],
+        key=f"uploader_{st.session_state['uploader_key']}"
+    )
 
     if uploaded_file:
         img = Image.open(uploaded_file)
-        st.image(img, caption="Print carregado", width=360)
+        
+        # Miniatura pequena em linha (quadradinho de 110px) com opção retrátil de expansão
+        col_img, col_info = st.columns([1, 4])
+        with col_img:
+            st.image(img, caption="Miniatura", width=110)
+        with col_info:
+            with st.expander("🔍 Clique aqui para ver a imagem ampliada"):
+                st.image(img, use_container_width=True)
 
-        if st.button("Processar com IA do Gemini"):
+        if st.button("Lançar transação"):
             with st.spinner("Analisando extrato com a inteligência do Gemini... Aguarde alguns segundos."):
                 prompt = """
                 Analise esta imagem de extrato bancário, fatura ou comprovante financeiro.
@@ -215,7 +230,6 @@ elif aba == "Escanear Extrato (IA)":
                     response_mime_type="application/json"
                 )
 
-                # Prioriza o modelo oficial gemini-3.8-flash com fallback de segurança
                 try:
                     response = gemini_client.models.generate_content(
                         model='gemini-3.8-flash',
@@ -224,7 +238,7 @@ elif aba == "Escanear Extrato (IA)":
                     )
                 except Exception:
                     response = gemini_client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-2.0-flash',
                         contents=[img, prompt],
                         config=config
                     )
@@ -245,8 +259,6 @@ elif aba == "Escanear Extrato (IA)":
         st.caption("Confira as informações antes de salvar definitivamente no seu banco de dados.")
 
         df_previa = pd.DataFrame(st.session_state["dados_extraidos"]).copy()
-        
-        # Exibe a data formatada como DD/MM/AAAA na tabela de conferência
         df_previa_exibicao = df_previa.copy()
         df_previa_exibicao["data"] = df_previa_exibicao["data"].apply(formatar_data_br)
         df_previa_exibicao.rename(columns={
@@ -284,12 +296,16 @@ elif aba == "Escanear Extrato (IA)":
                 if itens_duplicados > 0:
                     st.warning(f"{itens_duplicados} lançamento(s) ignorado(s) por já existirem no banco.")
 
+                # Limpa a memória das transações extraídas
                 st.session_state["dados_extraidos"] = []
+                # Limpa o arquivo de imagem enviado da tela
+                st.session_state["uploader_key"] += 1
                 st.rerun()
 
         with col_c2:
             if st.button("Descartar Leitura"):
                 st.session_state["dados_extraidos"] = []
+                st.session_state["uploader_key"] += 1
                 st.rerun()
 
 # ----------------- ABA 3: LANÇAMENTO RÁPIDO -----------------
