@@ -1,0 +1,6 @@
+streamlit
+supabase
+google-genai
+plotly
+pandas
+pillow
