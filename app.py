@@ -192,6 +192,21 @@ elif aba == "Escanear Extrato (IA)":
     st.subheader("Leitor Inteligente de Extratos e Prints")
     st.caption("Suba o print de uma fatura, extrato bancário ou comprovante Pix.")
 
+    # Exibe avisos persistentes de status (duplicação ou sucesso) que resistem ao reload
+    if "mensagem_status" in st.session_state and st.session_state["mensagem_status"]:
+        tipo_msg = st.session_state["mensagem_status"]["tipo"]
+        texto_msg = st.session_state["mensagem_status"]["texto"]
+        if tipo_msg == "warning":
+            st.warning(texto_msg)
+        elif tipo_msg == "success":
+            st.success(texto_msg)
+        elif tipo_msg == "info":
+            st.info(texto_msg)
+        
+        if st.button("Fechar aviso"):
+            st.session_state["mensagem_status"] = None
+            st.rerun()
+
     # Controle de limpeza automática do uploader
     if "uploader_key" not in st.session_state:
         st.session_state["uploader_key"] = 0
@@ -203,9 +218,10 @@ elif aba == "Escanear Extrato (IA)":
     )
 
     if uploaded_file:
+        # Limpa mensagem antiga ao carregar um novo arquivo
+        st.session_state["mensagem_status"] = None
         img = Image.open(uploaded_file)
         
-        # Miniatura pequena em linha (quadradinho de 110px) com opção retrátil de expansão
         col_img, col_info = st.columns([1, 4])
         with col_img:
             st.image(img, caption="Miniatura", width=110)
@@ -213,7 +229,7 @@ elif aba == "Escanear Extrato (IA)":
             with st.expander("🔍 Clique aqui para ver a imagem ampliada"):
                 st.image(img, use_container_width=True)
 
-        if st.button("Lançar Transação"):
+        if st.button("Lançar transação"):
             with st.spinner("Analisando extrato com a inteligência do Gemini... Aguarde alguns segundos."):
                 prompt = """
                 Analise esta imagem de extrato bancário, fatura ou comprovante financeiro.
@@ -291,14 +307,24 @@ elif aba == "Escanear Extrato (IA)":
                         supabase.table("transacoes").insert(item).execute()
                         itens_salvos += 1
 
-                if itens_salvos > 0:
-                    st.success(f"{itens_salvos} transação(ões) salva(s) com sucesso!")
-                if itens_duplicados > 0:
-                    st.warning(f"{itens_duplicados} lançamento(s) ignorado(s) por já existirem no banco.")
+                # Monta a mensagem que permanecerá na tela
+                if itens_salvos > 0 and itens_duplicados == 0:
+                    st.session_state["mensagem_status"] = {
+                        "tipo": "success",
+                        "texto": f"✅ Sucesso! {itens_salvos} transação(ões) salva(s) no banco de dados."
+                    }
+                elif itens_salvos > 0 and itens_duplicados > 0:
+                    st.session_state["mensagem_status"] = {
+                        "tipo": "warning",
+                        "texto": f"⚠️ {itens_salvos} transação(ões) salva(s), mas {itens_duplicados} lançamento(s) foram ignorados por já estarem cadastrados."
+                    }
+                elif itens_duplicados > 0 and itens_salvos == 0:
+                    st.session_state["mensagem_status"] = {
+                        "tipo": "warning",
+                        "texto": f"⚠️ Transação duplicada: todos os {itens_duplicados} lançamento(s) deste comprovante já existem no seu banco de dados com a mesma data, valor e descrição."
+                    }
 
-                # Limpa a memória das transações extraídas
                 st.session_state["dados_extraidos"] = []
-                # Limpa o arquivo de imagem enviado da tela
                 st.session_state["uploader_key"] += 1
                 st.rerun()
 
@@ -306,6 +332,10 @@ elif aba == "Escanear Extrato (IA)":
             if st.button("Descartar Leitura"):
                 st.session_state["dados_extraidos"] = []
                 st.session_state["uploader_key"] += 1
+                st.session_state["mensagem_status"] = {
+                    "tipo": "info",
+                    "texto": "ℹ️ Leitura descartada sem salvar nenhuma alteração."
+                }
                 st.rerun()
 
 # ----------------- ABA 3: LANÇAMENTO RÁPIDO -----------------
