@@ -105,12 +105,155 @@ def carregar_transacoes():
         return pd.DataFrame(res.data)
     return pd.DataFrame(columns=["id", "data", "descricao", "valor", "tipo", "categoria", "metodo_pagamento"])
 
+# Função para gravar no Supabase com validação anti-duplicidade
+def salvar_no_banco(dados):
+    duplicado = supabase.table("transacoes").select("id")\
+        .eq("data", dados["data"])\
+        .eq("descricao", dados["descricao"])\
+        .eq("valor", dados["valor"])\
+        .execute()
+
+    if duplicado.data and len(duplicado.data) > 0:
+        return False, f"⚠️ Transação duplicada ignorada: já existe '{dados['descricao']}' no valor de R$ {dados['valor']:.2f} nesta mesma data."
+    else:
+        supabase.table("transacoes").insert(dados).execute()
+        return True, f"✅ Lançado com sucesso: {dados['descricao']} - R$ {dados['valor']:.2f} ({dados['categoria']} / {dados['metodo_pagamento']})"
+
+# Função para interpretar frases informais de texto via Gemini
+def processar_comando_texto(texto_usuario):
+    hoje_iso = datetime.today().strftime("%Y-%m-%d")
+    prompt = f"""
+    O usuário digitou ou ditou a seguinte transação financeira em linguagem informal:
+    "{texto_usuario}"
+
+    A data de hoje de referência é: {hoje_iso}.
+
+    Extraia as informações e responda OBRIGATORIAMENTE com um objeto JSON puro (sem markdown, sem crases ```json```).
+    Estrutura obrigatória:
+    {{
+        "data": "AAAA-MM-DD",
+        "descricao": "Nome do estabelecimento, produto ou motivo em poucas palavras",
+        "valor": 12.34,
+        "tipo": "despesa" ou "receita",
+        "categoria": "Alimentação" | "Transporte" | "Moradia" | "Lazer" | "Saúde" | "Serviços" | "Outros",
+        "metodo_pagamento": "Pix" | "Crédito" | "Débito" | "Dinheiro" | "Boleto"
+    }}
+    Regras:
+    - O campo 'valor' deve ser SEMPRE float numérico positivo.
+    - Se o usuário não mencionar a data, use '{hoje_iso}'. Se disser 'ontem', calcule a data anterior.
+    - Se não mencionar o método, deduza 'Pix' ou 'Débito'.
+    """
+    config = types.GenerateContentConfig(response_mime_type="application/json")
+    
+    try:
+        response = gemini_client.models.generate_content(
+            model='gemini-3.8-flash',
+            contents=prompt,
+            config=config
+        )
+    except Exception:
+        response = gemini_client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+            config=config
+        )
+    
+    dados = json.loads(response.text)
+    if isinstance(dados, list) and len(dados) > 0:
+        dados = dados[0]
+        
+    return salvar_no_banco(dados)
+
+# Função para processar arquivo de áudio direto via Gemini
+def processar_comando_audio(audio_bytes, mime_type="audio/wav"):
+    hoje_iso = datetime.today().strftime("%Y-%m-%d")
+    prompt = f"""
+    Ouça esta gravação de áudio do usuário relatando uma transação financeira.
+    A data de referência hoje é: {hoje_iso}.
+    
+    Extraia as informações e responda OBRIGATORIAMENTE com um objeto JSON puro (sem markdown, sem crases ```json```).
+    Estrutura obrigatória:
+    {{
+        "data": "AAAA-MM-DD",
+        "descricao": "Nome do estabelecimento, produto ou motivo",
+        "valor": 12.34,
+        "tipo": "despesa" ou "receita",
+        "categoria": "Alimentação" | "Transporte" | "Moradia" | "Lazer" | "Saúde" | "Serviços" | "Outros",
+        "metodo_pagamento": "Pix" | "Crédito" | "Débito" | "Dinheiro" | "Boleto"
+    }}
+    Regras:
+    - O campo 'valor' deve ser SEMPRE float numérico positivo.
+    - Se o usuário não citar a data, assuma '{hoje_iso}'.
+    - Se não citar a forma de pagamento, deduza 'Pix' ou 'Débito'.
+    """
+    config = types.GenerateContentConfig(response_mime_type="application/json")
+    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
+
+    try:
+        response = gemini_client.models.generate_content(
+            model='gemini-3.8-flash',
+            contents=[audio_part, prompt],
+            config=config
+        )
+    except Exception:
+        response = gemini_client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=[audio_part, prompt],
+            config=config
+        )
+
+    dados = json.loads(response.text)
+    if isinstance(dados, list) and len(dados) > 0:
+        dados = dados[0]
+        
+    return salvar_no_banco(dados)
+
 df = carregar_transacoes()
 
 # ----------------- ABA 1: VISÃO GERAL -----------------
 if aba == "Visão Geral":
     st.markdown("## Seu dinheiro, em foco.")
     st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- Caixinha de Lançamento Rápido no Topo (Texto ou Gravação de Áudio) ---
+    with st.expander("⚡ Lançamento Rápido (Texto ou Gravar Voz)", expanded=False):
+        modo_entrada = st.radio("Escolha a forma de entrada:", ["Digitar Frase", "Gravar Áudio"], horizontal=True, key="modo_vg")
+        
+        if modo_entrada == "Digitar Frase":
+            col_txt, col_btn = st.columns([4, 1])
+            with col_txt:
+                frase_topo = st.text_input(
+                    "Dite ou digite o gasto:",
+                    placeholder="Ex: Paguei 35 reais no almoço no débito hoje...",
+                    key="input_frase_topo",
+                    label_visibility="collapsed"
+                )
+            with col_btn:
+                btn_topo = st.button("Lançar", key="btn_frase_topo")
+
+            if btn_topo and frase_topo.strip():
+                with st.spinner("Interpretando com IA..."):
+                    ok, msg = processar_comando_texto(frase_topo)
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.warning(msg)
+
+        elif modo_entrada == "Gravar Áudio":
+            audio_vg = st.audio_input("Grave seu comando de voz:", key="audio_input_vg")
+            if audio_vg is not None:
+                if st.button("Processar Áudio Gravado", key="btn_proc_audio_vg"):
+                    with st.spinner("Ouvindo e analisando o áudio com Gemini..."):
+                        audio_bytes = audio_vg.read()
+                        ok, msg = processar_comando_audio(audio_bytes, mime_type="audio/wav")
+                        if ok:
+                            st.success(msg)
+                            st.rerun()
+                        else:
+                            st.warning(msg)
+
     st.markdown("<br>", unsafe_allow_html=True)
 
     receitas = df[df["tipo"] == "receita"]["valor"].sum() if not df.empty else 0.0
@@ -192,7 +335,6 @@ elif aba == "Escanear Extrato (IA)":
     st.subheader("Leitor Inteligente de Extratos e Prints")
     st.caption("Suba o print de uma fatura, extrato bancário ou comprovante Pix.")
 
-    # Exibe avisos persistentes de status (duplicação ou sucesso) que resistem ao reload
     if "mensagem_status" in st.session_state and st.session_state["mensagem_status"]:
         tipo_msg = st.session_state["mensagem_status"]["tipo"]
         texto_msg = st.session_state["mensagem_status"]["texto"]
@@ -207,7 +349,6 @@ elif aba == "Escanear Extrato (IA)":
             st.session_state["mensagem_status"] = None
             st.rerun()
 
-    # Controle de limpeza automática do uploader
     if "uploader_key" not in st.session_state:
         st.session_state["uploader_key"] = 0
 
@@ -218,7 +359,6 @@ elif aba == "Escanear Extrato (IA)":
     )
 
     if uploaded_file:
-        # Limpa mensagem antiga ao carregar um novo arquivo
         st.session_state["mensagem_status"] = None
         img = Image.open(uploaded_file)
         
@@ -242,9 +382,7 @@ elif aba == "Escanear Extrato (IA)":
                 - categoria: uma entre "Alimentação", "Transporte", "Moradia", "Lazer", "Serviços", "Saúde" ou "Outros".
                 - metodo_pagamento: "Pix", "Crédito", "Débito" ou "Boleto".
                 """
-                config = types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                )
+                config = types.GenerateContentConfig(response_mime_type="application/json")
 
                 try:
                     response = gemini_client.models.generate_content(
@@ -268,7 +406,6 @@ elif aba == "Escanear Extrato (IA)":
                 except Exception as e:
                     st.error(f"Erro ao interpretar dados da IA: {e}")
 
-    # Área de Confirmação Prévia e Prevenção de Duplicidade
     if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]:
         st.markdown("---")
         st.markdown("### 📋 Prévia das Transações Identificadas")
@@ -307,7 +444,6 @@ elif aba == "Escanear Extrato (IA)":
                         supabase.table("transacoes").insert(item).execute()
                         itens_salvos += 1
 
-                # Monta a mensagem que permanecerá na tela
                 if itens_salvos > 0 and itens_duplicados == 0:
                     st.session_state["mensagem_status"] = {
                         "tipo": "success",
@@ -340,7 +476,52 @@ elif aba == "Escanear Extrato (IA)":
 
 # ----------------- ABA 3: LANÇAMENTO RÁPIDO -----------------
 elif aba == "Lançamento Rápido":
-    st.subheader("Novo Lançamento Manual")
+    st.subheader("Novo Lançamento")
+    
+    # Seção 1: Entrada Inteligente com IA (Texto ou Áudio)
+    st.markdown("#### 🎙️ Entrada Inteligente com IA")
+    st.caption("Fale no gravador ou digite uma frase informal.")
+    
+    opcao_aba3 = st.radio("Método de entrada:", ["Digitar Texto", "Gravar Áudio"], horizontal=True, key="modo_aba3")
+
+    if opcao_aba3 == "Digitar Texto":
+        col_l1, col_l2 = st.columns([4, 1])
+        with col_l1:
+            frase_manual = st.text_input(
+                "Texto livre:",
+                placeholder="Ex: Gastei 25 reais no uber hoje de manhã no crédito...",
+                key="input_frase_aba3"
+            )
+        with col_l2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            btn_manual = st.button("Lançar com IA", key="btn_frase_aba3")
+
+        if btn_manual and frase_manual.strip():
+            with st.spinner("Interpretando com IA..."):
+                ok, msg = processar_comando_texto(frase_manual)
+                if ok:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.warning(msg)
+
+    elif opcao_aba3 == "Gravar Áudio":
+        audio_aba3 = st.audio_input("Grave sua mensagem de voz:", key="audio_input_aba3")
+        if audio_aba3 is not None:
+            if st.button("Processar Áudio", key="btn_proc_audio_aba3"):
+                with st.spinner("Ouvindo e analisando áudio com Gemini..."):
+                    audio_bytes = audio_aba3.read()
+                    ok, msg = processar_comando_audio(audio_bytes, mime_type="audio/wav")
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.warning(msg)
+
+    st.markdown("---")
+    
+    # Seção 2: Formulário Manual Tradicional
+    st.markdown("#### 📝 Lançamento Manual Estruturado")
     with st.form("form_transacao"):
         col_f1, col_f2 = st.columns(2)
         with col_f1:
@@ -352,7 +533,7 @@ elif aba == "Lançamento Rápido":
             categoria = st.selectbox("Categoria", ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"])
             metodo = st.selectbox("Método de Pagamento", ["Pix", "Crédito", "Débito", "Dinheiro"])
         
-        submit = st.form_submit_button("Salvar Transação")
+        submit = st.form_submit_button("Salvar Manualmente")
         if submit:
             payload = {
                 "descricao": desc,
