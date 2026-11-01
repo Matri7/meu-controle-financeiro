@@ -91,6 +91,13 @@ st.sidebar.markdown("### 💳 FinSmart")
 st.sidebar.caption("Seu orçamento sob foco")
 aba = st.sidebar.radio("Navegar", ["Visão Geral", "Escanear Extrato (IA)", "Lançamento Rápido"])
 
+# Função para formatar datas no padrão brasileiro DD/MM/AAAA
+def formatar_data_br(data_val):
+    try:
+        return pd.to_datetime(data_val).strftime("%d/%m/%Y")
+    except Exception:
+        return str(data_val)
+
 # Função para carregar transações do Supabase
 def carregar_transacoes():
     res = supabase.table("transacoes").select("*").order("data", desc=True).execute()
@@ -106,12 +113,10 @@ if aba == "Visão Geral":
     st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Cálculo dos totais
     receitas = df[df["tipo"] == "receita"]["valor"].sum() if not df.empty else 0.0
     despesas = df[df["tipo"] == "despesa"]["valor"].sum() if not df.empty else 0.0
     saldo = receitas - despesas
 
-    # Cards no estilo Pocketwise
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f"""
@@ -137,14 +142,23 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Gráficos e tabela
     col_g1, col_g2 = st.columns([1.2, 1])
     
     with col_g1:
         st.subheader("Extrato Recente")
         if not df.empty:
+            df_exibicao = df[["data", "descricao", "categoria", "tipo", "valor"]].head(10).copy()
+            df_exibicao["data"] = df_exibicao["data"].apply(formatar_data_br)
+            df_exibicao.rename(columns={
+                "data": "Data",
+                "descricao": "Descrição",
+                "categoria": "Categoria",
+                "tipo": "Tipo",
+                "valor": "Valor (R$)"
+            }, inplace=True)
+            
             st.dataframe(
-                df[["data", "descricao", "categoria", "tipo", "valor"]].head(10),
+                df_exibicao,
                 use_container_width=True,
                 hide_index=True
             )
@@ -182,10 +196,10 @@ elif aba == "Escanear Extrato (IA)":
 
     if uploaded_file:
         img = Image.open(uploaded_file)
-        st.image(img, caption="Print carregado", width=380)
+        st.image(img, caption="Print carregado", width=360)
 
         if st.button("Processar com IA do Gemini"):
-            with st.spinner("Analisando extrato e extraindo transações..."):
+            with st.spinner("Analisando extrato com a inteligência do Gemini... Aguarde alguns segundos."):
                 prompt = """
                 Analise esta imagem de extrato bancário, fatura ou comprovante financeiro.
                 Extraia todos os lançamentos financeiros visíveis e responda OBRIGATORIAMENTE em formato JSON com uma lista de objetos.
@@ -197,39 +211,86 @@ elif aba == "Escanear Extrato (IA)":
                 - categoria: uma entre "Alimentação", "Transporte", "Moradia", "Lazer", "Serviços", "Saúde" ou "Outros".
                 - metodo_pagamento: "Pix", "Crédito", "Débito" ou "Boleto".
                 """
-                # Configuração para forçar resposta em JSON puro
                 config = types.GenerateContentConfig(
                     response_mime_type="application/json"
                 )
 
+                # Prioriza o modelo oficial gemini-3.8-flash com fallback de segurança
                 try:
                     response = gemini_client.models.generate_content(
-                        model='gemini-2.0-flash',
+                        model='gemini-3.8-flash',
                         contents=[img, prompt],
                         config=config
                     )
                 except Exception:
-                    # Se o modelo principal falhar, tenta o alternativo
                     response = gemini_client.models.generate_content(
                         model='gemini-2.5-flash',
                         contents=[img, prompt],
                         config=config
-                    )         
-                    
-                    dados = json.loads(response.text)
+                    )
 
-                    # Garante que dados seja uma lista
+                try:
+                    dados = json.loads(response.text)
                     if isinstance(dados, dict):
                         dados = [dados]
-
-                    for item in dados:
-                        supabase.table("transacoes").insert(item).execute()
-
-                    st.success(f"Sucesso! {len(dados)} transação(ões) identificada(s) e salva(s) no Supabase.")
-                    st.rerun()
-
+                    st.session_state["dados_extraidos"] = dados
+                    st.toast("Leitura concluída com sucesso!", icon="✅")
                 except Exception as e:
-                    st.error(f"Erro ao processar: {e}")
+                    st.error(f"Erro ao interpretar dados da IA: {e}")
+
+    # Área de Confirmação Prévia e Prevenção de Duplicidade
+    if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]:
+        st.markdown("---")
+        st.markdown("### 📋 Prévia das Transações Identificadas")
+        st.caption("Confira as informações antes de salvar definitivamente no seu banco de dados.")
+
+        df_previa = pd.DataFrame(st.session_state["dados_extraidos"]).copy()
+        
+        # Exibe a data formatada como DD/MM/AAAA na tabela de conferência
+        df_previa_exibicao = df_previa.copy()
+        df_previa_exibicao["data"] = df_previa_exibicao["data"].apply(formatar_data_br)
+        df_previa_exibicao.rename(columns={
+            "data": "Data",
+            "descricao": "Descrição",
+            "categoria": "Categoria",
+            "tipo": "Tipo",
+            "valor": "Valor (R$)",
+            "metodo_pagamento": "Método"
+        }, inplace=True)
+        
+        st.dataframe(df_previa_exibicao, use_container_width=True, hide_index=True)
+
+        col_c1, col_c2 = st.columns([1, 4])
+        with col_c1:
+            if st.button("Confirmar e Salvar"):
+                itens_salvos = 0
+                itens_duplicados = 0
+
+                for item in st.session_state["dados_extraidos"]:
+                    duplicado = supabase.table("transacoes").select("id")\
+                        .eq("data", item["data"])\
+                        .eq("descricao", item["descricao"])\
+                        .eq("valor", item["valor"])\
+                        .execute()
+
+                    if duplicado.data and len(duplicado.data) > 0:
+                        itens_duplicados += 1
+                    else:
+                        supabase.table("transacoes").insert(item).execute()
+                        itens_salvos += 1
+
+                if itens_salvos > 0:
+                    st.success(f"{itens_salvos} transação(ões) salva(s) com sucesso!")
+                if itens_duplicados > 0:
+                    st.warning(f"{itens_duplicados} lançamento(s) ignorado(s) por já existirem no banco.")
+
+                st.session_state["dados_extraidos"] = []
+                st.rerun()
+
+        with col_c2:
+            if st.button("Descartar Leitura"):
+                st.session_state["dados_extraidos"] = []
+                st.rerun()
 
 # ----------------- ABA 3: LANÇAMENTO RÁPIDO -----------------
 elif aba == "Lançamento Rápido":
@@ -239,7 +300,7 @@ elif aba == "Lançamento Rápido":
         with col_f1:
             desc = st.text_input("Descrição (Ex: Padaria, Salário)")
             valor = st.number_input("Valor (R$)", min_value=0.01, step=1.00)
-            data_t = st.date_input("Data", datetime.today())
+            data_t = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
         with col_f2:
             tipo = st.selectbox("Tipo", ["despesa", "receita"])
             categoria = st.selectbox("Categoria", ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"])
