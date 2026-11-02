@@ -97,6 +97,56 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- Funções Auxiliares de Parsing de Entrada Inteligente ---
+def parse_moeda_automatica(texto_val):
+    """Permite digitar '3550' -> 35.50 ou '35,50'/'35.50' -> 35.50"""
+    if not texto_val:
+        return 0.0
+    txt = str(texto_val).strip().replace("R$", "").replace("r$", "").strip()
+    if "," in txt or "." in txt:
+        txt = txt.replace(",", ".")
+        try:
+            return float(txt)
+        except ValueError:
+            return 0.0
+    digitos = "".join([c for c in txt if c.isdigit()])
+    if not digitos:
+        return 0.0
+    if len(digitos) <= 2:
+        return float(digitos) / 100.0
+    return float(digitos[:-2] + "." + digitos[-2:])
+
+def parse_hora_automatica(texto_hora):
+    """
+    Permite digitar '125' -> 1h 25m -> 1.42 horas decimais
+    Permite '1:25' -> 1.42 horas decimais
+    Permite '45' -> 0h 45m -> 0.75 horas decimais
+    """
+    if not texto_hora:
+        return 0.0, "00:00"
+    txt = str(texto_hora).strip()
+    if ":" in txt:
+        partes = txt.split(":")
+        h = int(partes[0]) if partes[0].isdigit() else 0
+        m = int(partes[1]) if len(partes) > 1 and partes[1].isdigit() else 0
+    else:
+        digitos = "".join([c for c in txt if c.isdigit()])
+        if not digitos:
+            return 0.0, "00:00"
+        if len(digitos) <= 2:
+            h = 0
+            m = int(digitos)
+        else:
+            h = int(digitos[:-2])
+            m = int(digitos[-2:])
+    
+    # Tratamento de minutos extras
+    h += m // 60
+    m = m % 60
+    hora_decimal = round(h + (m / 60.0), 3)
+    hora_formatada = f"{h}:{m:02d}"
+    return hora_decimal, hora_formatada
+
 st.sidebar.markdown("### 💳 FinSmart")
 st.sidebar.caption("Seu orçamento sob foco")
 aba = st.sidebar.radio("Navegar", ["Visão Geral", "Controle Uber", "Escanear Extrato (IA)", "Lançamento Rápido"])
@@ -441,35 +491,46 @@ elif aba == "Controle Uber":
         with col_u4:
             st.markdown(f'<div class="metric-card"><div class="metric-title">Lucro Líquido / KM</div><div class="metric-value">R$ {lucro_por_km:,.2f}</div></div>', unsafe_allow_html=True)
 
-    # Formulário de Fechamento Diário
+    # Formulário de Fechamento Diário com Máscaras Automáticas
     with st.container(border=True):
         st.markdown("### 📝 Registrar Diária de Corridas")
-        st.caption("Preencha com o resumo do app da Uber no final do dia.")
+        st.caption("Digite apenas os números corridos. O app formata o tempo e as casas decimais automaticamente.")
         
         with st.form("form_diaria_uber"):
             col_f1, col_f2 = st.columns(2)
             with col_f1:
                 data_diaria = st.date_input("Data da Diária", datetime.today(), format="DD/MM/YYYY")
-                bruto_diaria = st.number_input("Ganhos Brutos (R$)", min_value=0.01, step=5.00, help="Valor total do resumo do app da Uber.")
-                km_diaria = st.number_input("Quilômetros Rodados (Km)", min_value=0.1, step=1.0, help="Distância percorrida informada no app da Uber.")
+                bruto_txt = st.text_input("Ganhos Brutos (R$)", placeholder="Ex: 13550 para R$ 135,50")
+                km_txt = st.text_input("Quilômetros Rodados (Km)", placeholder="Ex: 52 ou 52.4")
             with col_f2:
-                horas_diaria = st.number_input("Tempo Online (em Horas)", min_value=0.1, step=0.5, help="Ex: 2h30min preencha 2.5.")
-                custo_km = st.number_input("Custo Estimado por KM (R$)", value=0.45, step=0.05, help="Média de combustível + desgaste por km.")
-                outros = st.number_input("Outros Gastos do Dia (Lanche/Lava-jato)", value=0.0, step=2.0)
+                tempo_txt = st.text_input("Tempo Online", placeholder="Ex: 125 para 1h25m ou 40 para 40m")
+                custo_km_txt = st.text_input("Custo Estimado por KM (R$)", value="0.45", placeholder="Ex: 45 para R$ 0,45")
+                outros_txt = st.text_input("Outros Gastos (R$)", placeholder="Ex: 1200 para R$ 12,00 (opcional)")
 
             btn_salvar_diaria = st.form_submit_button("💾 Salvar Diária e Sincronizar com FinSmart")
             if btn_salvar_diaria:
-                payload_uber = {
-                    "data": str(data_diaria),
-                    "ganho_bruto": float(bruto_diaria),
-                    "km_rodados": float(km_diaria),
-                    "horas_online": float(horas_diaria),
-                    "custo_km_padrao": float(custo_km),
-                    "outros_gastos": float(outros)
-                }
-                salvar_diaria_uber(payload_uber)
-                st.success("Diária salva com sucesso! O valor bruto já foi somado à sua Visão Geral.")
-                st.rerun()
+                # Conversões inteligentes
+                val_bruto = parse_moeda_automatica(bruto_txt)
+                val_km = parse_moeda_automatica(km_txt) if ("," not in km_txt and "." not in km_txt and len(km_txt) > 2) else float(km_txt.replace(",", ".") if km_txt else 0.0)
+                val_horas, hora_legivel = parse_hora_automatica(tempo_txt)
+                val_custo_km = parse_moeda_automatica(custo_km_txt) if ("," not in custo_km_txt and "." not in custo_km_txt and len(custo_km_txt) > 2) else float(custo_km_txt.replace(",", ".") if custo_km_txt else 0.45)
+                val_outros = parse_moeda_automatica(outros_txt)
+
+                if val_bruto <= 0:
+                    st.error("Informe um ganho bruto válido.")
+                else:
+                    payload_uber = {
+                        "data": str(data_diaria),
+                        "ganho_bruto": float(val_bruto),
+                        "km_rodados": float(val_km),
+                        "horas_online": float(val_horas),
+                        "custo_km_padrao": float(val_custo_km),
+                        "outros_gastos": float(val_outros),
+                        "observacao": f"Tempo: {hora_legivel}"
+                    }
+                    salvar_diaria_uber(payload_uber)
+                    st.success(f"Diária registrada com sucesso! Tempo computado: {hora_legivel} | R$ {val_bruto:,.2f}")
+                    st.rerun()
 
     # Histórico de Diárias com Edição Interativa
     st.markdown("### 📋 Histórico e Edição de Diárias")
@@ -506,13 +567,11 @@ elif aba == "Controle Uber":
             if st.button("💾 Salvar Alterações nas Diárias"):
                 alteracoes_uber = st.session_state.get("editor_diarias_uber", {})
                 
-                # Exclusões
                 linhas_removidas = alteracoes_uber.get("deleted_rows", [])
                 for idx in linhas_removidas:
                     id_remocao = int(df_uber_editavel.iloc[idx]["id"])
                     excluir_diaria_uber(id_remocao)
 
-                # Edições
                 linhas_alteradas = alteracoes_uber.get("edited_rows", {})
                 if linhas_alteradas:
                     for idx, campos in linhas_alteradas.items():
@@ -643,7 +702,7 @@ elif aba == "Lançamento Rápido":
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             desc = st.text_input("Descrição (Ex: Padaria, Salário)")
-            valor = st.number_input("Valor (R$)", min_value=0.01, step=1.00)
+            valor_manual_txt = st.text_input("Valor (R$)", placeholder="Ex: 3550 para R$ 35,50")
             data_t = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
         with col_f2:
             tipo = st.selectbox("Tipo", ["despesa", "receita"])
@@ -652,7 +711,11 @@ elif aba == "Lançamento Rápido":
         
         submit = st.form_submit_button("Salvar Manualmente")
         if submit:
-            payload = {"descricao": desc, "valor": valor, "data": str(data_t), "tipo": tipo, "categoria": categoria, "metodo_pagamento": metodo}
-            supabase.table("transacoes").insert(payload).execute()
-            st.success("Transação salva com sucesso!")
-            st.rerun()
+            valor_num = parse_moeda_automatica(valor_manual_txt)
+            if valor_num <= 0:
+                st.error("Informe um valor numérico válido.")
+            else:
+                payload = {"descricao": desc, "valor": valor_num, "data": str(data_t), "tipo": tipo, "categoria": categoria, "metodo_pagamento": metodo}
+                supabase.table("transacoes").insert(payload).execute()
+                st.success(f"Transação salva: R$ {valor_num:,.2f}")
+                st.rerun()
