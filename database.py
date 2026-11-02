@@ -31,6 +31,12 @@ def salvar_no_banco(dados):
         supabase.table("transacoes").insert(dados).execute()
         return True, f"✅ Lançado com sucesso: {dados['descricao']} - R$ {dados['valor']:.2f} ({dados['categoria']} / {dados['metodo_pagamento']})"
 
+def atualizar_transacao(id_transacao, dados_atualizados):
+    supabase.table("transacoes").update(dados_atualizados).eq("id", id_transacao).execute()
+
+def excluir_transacao(id_transacao):
+    supabase.table("transacoes").delete().eq("id", id_transacao).execute()
+
 def obter_relatorio_semanal(semana_ano):
     res = supabase.table("relatorios_semanais").select("*").eq("semana_ano", semana_ano).execute()
     if res.data and len(res.data) > 0:
