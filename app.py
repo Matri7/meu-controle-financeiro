@@ -114,28 +114,36 @@ st.markdown("""
         color: #2dd4bf !important;
     }
 
-    /* Estilo das Abas Retangulares dentro dos Modais/Dialogs (Sem Bolinhas) */
-    div[data-testid="stDialog"] div.stButton > button {
-        width: 100% !important;
-        border-radius: 12px !important;
-        padding: 10px 14px !important;
-        font-size: 0.90rem !important;
-        font-weight: 500 !important;
+    /* Estilização das Tabs do Modal (Retangulares, sem marcadores redondos) */
+    div[data-testid="stDialog"] div[data-baseweb="tab-list"] {
+        gap: 8px !important;
+        background-color: transparent !important;
+        border-bottom: 1px solid #14202c !important;
+        padding-bottom: 8px !important;
+    }
+    div[data-testid="stDialog"] button[data-baseweb="tab"] {
         background-color: #0c141d !important;
         color: #8fa0b5 !important;
         border: 1px solid #182635 !important;
+        border-radius: 12px !important;
+        padding: 10px 16px !important;
+        font-size: 0.88rem !important;
+        font-weight: 600 !important;
         transition: all 0.15s ease !important;
     }
-    div[data-testid="stDialog"] div.stButton > button:hover {
+    div[data-testid="stDialog"] button[data-baseweb="tab"]:hover {
         background-color: #111d2a !important;
         color: #ffffff !important;
     }
-    div[data-testid="stDialog"] div.stButton > button[kind="primary"] {
+    div[data-testid="stDialog"] button[data-baseweb="tab"][aria-selected="true"] {
         background-color: #10212f !important;
         color: #ffffff !important;
-        font-weight: 600 !important;
         border: 1px solid #203c52 !important;
         border-left: 3.5px solid #2dd4bf !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    }
+    div[data-testid="stDialog"] div[data-baseweb="tab-highlight"] {
+        display: none !important;
     }
 
     /* Cards e Métricas */
@@ -232,19 +240,16 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    div.main div.stButton > button.btn-principal { 
-        background-color: #10b981 !important; 
-        color: #062419 !important; 
-        font-weight: 600 !important; 
-        border: none !important; 
-        border-radius: 10px !important; 
-        padding: 10px 22px !important; 
-        transition: all 0.2s ease-in-out !important; 
+    div.main div.stButton > button:first-child { 
+        background-color: #10b981; 
+        color: #062419; 
+        font-weight: 600; 
+        border: none; 
+        border-radius: 10px; 
+        padding: 10px 22px; 
+        transition: all 0.2s ease-in-out; 
     }
-    div.main div.stButton > button.btn-principal:hover { 
-        background-color: #059669 !important; 
-        color: #ffffff !important; 
-    }
+    div.main div.stButton > button:first-child:hover { background-color: #059669; color: #ffffff; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -443,56 +448,32 @@ MESES_PT = {
     9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
 }
 
-# --- MODAL "ADICIONAR TRANSAÇÃO" COM DESIGN RETANGULAR IDÊNTICO À SIDEBAR ---
+# --- MODAL "ADICIONAR TRANSAÇÃO" ESTÁVEL COM ABAS NATIVAS ESTILIZADAS ---
 @st.dialog("Adicionar Transação", width="large")
 def exibir_modal_adicionar_transacao():
     st.caption("Escolha a melhor forma para registrar seu lançamento financeiro:")
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Estado da aba interna do modal
-    if "modal_modo_entrada" not in st.session_state:
-        st.session_state["modal_modo_entrada"] = "Comando Rápido"
-    if "modal_sub_comando" not in st.session_state:
-        st.session_state["modal_sub_comando"] = "Texto"
-
-    # Seletores Primários em Retângulos Alinhados
-    col_m1, col_m2, col_m3 = st.columns(3)
-    with col_m1:
-        if st.button("⚡   Comando Rápido", key="btn_modal_rapido", type="primary" if st.session_state["modal_modo_entrada"] == "Comando Rápido" else "secondary", use_container_width=True):
-            st.session_state["modal_modo_entrada"] = "Comando Rápido"
-            st.rerun()
-    with col_m2:
-        if st.button("📄   Escanear Extrato (IA)", key="btn_modal_extrato", type="primary" if st.session_state["modal_modo_entrada"] == "Escanear Extrato" else "secondary", use_container_width=True):
-            st.session_state["modal_modo_entrada"] = "Escanear Extrato"
-            st.rerun()
-    with col_m3:
-        if st.button("📝   Lançamento Manual", key="btn_modal_manual", type="primary" if st.session_state["modal_modo_entrada"] == "Lançamento Manual" else "secondary", use_container_width=True):
-            st.session_state["modal_modo_entrada"] = "Lançamento Manual"
-            st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
+    # Abas com troca instantânea que NUNCA fecham a janela modal
+    tab_rapido, tab_extrato, tab_manual = st.tabs([
+        "⚡  Comando Rápido",
+        "📄  Escanear Extrato (IA)",
+        "📝  Lançamento Manual"
+    ])
 
     # 1. ABA COMANDO RÁPIDO
-    if st.session_state["modal_modo_entrada"] == "Comando Rápido":
-        col_s1, col_s2, _ = st.columns([1.5, 1.5, 3])
-        with col_s1:
-            if st.button("💬 Digitar Frase", key="btn_sub_txt", type="primary" if st.session_state["modal_sub_comando"] == "Texto" else "secondary", use_container_width=True):
-                st.session_state["modal_sub_comando"] = "Texto"
-                st.rerun()
-        with col_s2:
-            if st.button("🎙️ Gravar Voz", key="btn_sub_audio", type="primary" if st.session_state["modal_sub_comando"] == "Áudio" else "secondary", use_container_width=True):
-                st.session_state["modal_sub_comando"] = "Áudio"
-                st.rerun()
-
+    with tab_rapido:
         st.markdown("<br>", unsafe_allow_html=True)
-
-        if st.session_state["modal_sub_comando"] == "Texto":
+        sub_tab_txt, sub_tab_audio = st.tabs(["💬  Digitar Frase", "🎙️  Gravar Voz"])
+        
+        with sub_tab_txt:
+            st.markdown("<br>", unsafe_allow_html=True)
             st.caption("Dite ou digite:")
             col_t1, col_t2 = st.columns([4, 1.2])
             with col_t1:
-                frase_dig = st.text_input("Comando de texto", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...", label_visibility="collapsed")
+                frase_dig = st.text_input("Comando de texto", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...", label_visibility="collapsed", key="input_modal_frase")
             with col_t2:
-                btn_lancar_txt = st.button("Lançar com IA", key="btn_sub_lancar_ia", use_container_width=True)
+                btn_lancar_txt = st.button("Lançar com IA", key="btn_lancar_modal_txt", use_container_width=True)
             
             if btn_lancar_txt and frase_dig.strip():
                 with st.spinner("Processando..."):
@@ -502,11 +483,12 @@ def exibir_modal_adicionar_transacao():
                         st.rerun()
                     else:
                         st.warning(msg)
-                        
-        elif st.session_state["modal_sub_comando"] == "Áudio":
+
+        with sub_tab_audio:
+            st.markdown("<br>", unsafe_allow_html=True)
             st.caption("Grave sua mensagem de voz:")
-            audio_gravado = st.audio_input("Áudio", label_visibility="collapsed")
-            if audio_gravado is not None and st.button("Processar Áudio com IA", key="btn_proc_audio_modal"):
+            audio_gravado = st.audio_input("Áudio", label_visibility="collapsed", key="input_modal_audio")
+            if audio_gravado is not None and st.button("Processar Áudio com IA", key="btn_proc_modal_audio"):
                 with st.spinner("Processando áudio com IA..."):
                     ok, msg = processar_comando_audio(audio_gravado.read(), mime_type="audio/wav")
                     if ok:
@@ -516,18 +498,19 @@ def exibir_modal_adicionar_transacao():
                         st.warning(msg)
 
     # 2. ABA ESCANEAR EXTRATO
-    elif st.session_state["modal_modo_entrada"] == "Escanear Extrato":
-        st.caption("Suba o extrato bancário em PDF ou comprovantes/prints:")
-        uploaded_file = st.file_uploader("Arquivo", type=["png", "jpg", "jpeg", "pdf"], label_visibility="collapsed")
+    with tab_extrato:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.caption("Suba o extrato bancário em PDF ou prints/comprovantes:")
+        uploaded_file = st.file_uploader("Arquivo", type=["png", "jpg", "jpeg", "pdf"], label_visibility="collapsed", key="file_modal_extrato")
         if uploaded_file:
             is_pdf = uploaded_file.name.lower().endswith(".pdf")
             if not is_pdf:
                 img_prev = Image.open(uploaded_file)
                 st.image(img_prev, width=140)
             else:
-                st.info(f"📄 Arquivo PDF carregado: {uploaded_file.name}")
+                st.info(f"📄 Documento PDF carregado: {uploaded_file.name}")
                 
-            if st.button("Analisar e Extrair Transações", key="btn_proc_doc_modal"):
+            if st.button("Analisar e Extrair Transações", key="btn_proc_modal_extrato"):
                 with st.spinner("IA analisando linhas do documento..."):
                     arquivo_in = uploaded_file.read() if is_pdf else img_prev
                     try:
@@ -542,12 +525,13 @@ def exibir_modal_adicionar_transacao():
                         st.error(f"Erro ao processar documento: {e}")
 
     # 3. ABA LANÇAMENTO MANUAL
-    elif st.session_state["modal_modo_entrada"] == "Lançamento Manual":
-        with st.form("form_modal_manual"):
+    with tab_manual:
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.form("form_modal_manual_tab"):
             col_m1, col_m2 = st.columns(2)
             with col_m1:
                 desc = st.text_input("Descrição", placeholder="Ex: Farmácia, Supermercado")
-                val_manual = st.text_input("Valor (R$)", value="R$ 0,00")
+                val_manual = st.text_input("Valor (R$)", value="R$ 0,00", help="Ex: digite 3550 para R$ 35,50")
                 data_m = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
             with col_m2:
                 tipo = st.selectbox("Tipo", ["despesa", "receita"])
