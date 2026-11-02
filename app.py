@@ -25,7 +25,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS com Alinhamento Perfeito da Sidebar
+# Estilização CSS Cirúrgica para Forçar Alinhamento à Esquerda no Streamlit
 st.markdown("""
 <style>
     .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
@@ -37,22 +37,19 @@ st.markdown("""
         padding-top: 1.2rem !important;
     }
     
-    /* Remove padding lateral excessivo do contentor da sidebar */
     section[data-testid="stSidebar"] div[data-testid="stSidebarContent"] {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
     }
     
-    /* Ajusta cada contentor de botão para não criar desalinhamentos verticais */
+    /* Espaçamento entre os botões */
     section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(div.stButton) {
-        margin-bottom: 2px !important;
+        margin-bottom: 4px !important;
     }
 
-    /* Formatação dos Botões da Sidebar como Retângulos Perfeitos */
+    /* Trava o botão em largura total e alinhamento à esquerda */
     section[data-testid="stSidebar"] div.stButton {
         width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
     }
 
     section[data-testid="stSidebar"] div.stButton > button {
@@ -62,17 +59,28 @@ st.markdown("""
         justify-content: flex-start !important;
         align-items: center !important;
         text-align: left !important;
-        gap: 12px !important;
         background-color: transparent !important;
         color: #8fa0b5 !important;
         border: 1px solid transparent !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
         padding: 10px 14px !important;
-        font-size: 0.92rem !important;
+        font-size: 0.95rem !important;
         font-weight: 500 !important;
-        line-height: 1.2 !important;
         transition: all 0.15s ease-in-out !important;
         box-sizing: border-box !important;
+    }
+
+    /* Força o container interno de texto e markdown a NÃO centralizar */
+    section[data-testid="stSidebar"] div.stButton > button div[data-testid="stMarkdownContainer"],
+    section[data-testid="stSidebar"] div.stButton > button p {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        width: 100% !important;
+        gap: 12px !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
     section[data-testid="stSidebar"] div.stButton > button:hover {
@@ -80,9 +88,8 @@ st.markdown("""
         color: #f1f5f9 !important;
     }
     
-    /* Retângulo da Aba Ativa (Destaque alinhado sem quebra) */
-    section[data-testid="stSidebar"] div.stButton > button[kind="primary"],
-    section[data-testid="stSidebar"] div.stButton > button.nav-active {
+    /* Retângulo da Aba Ativa (Design Exato do Print) */
+    section[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
         background-color: #101c27 !important;
         color: #ffffff !important;
         font-weight: 600 !important;
@@ -282,7 +289,7 @@ st.sidebar.markdown("""
     </div>
 </div>
 
-<div style="font-size: 0.68rem; font-weight: 700; color: #4e6173; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; padding-left: 4px;">
+<div style="font-size: 0.68rem; font-weight: 700; color: #4e6173; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; padding-left: 4px;">
     Espaço de trabalho
 </div>
 """, unsafe_allow_html=True)
@@ -290,9 +297,10 @@ st.sidebar.markdown("""
 if "aba_ativa" not in st.session_state:
     st.session_state["aba_ativa"] = "Visão Geral"
 
-# Botões de Navegação com Alinhamento Perfeito
+# Botões de Navegação com Ícones Minimalistas Perfeitamente Alinhados
+# (Se quiser trocar qualquer ícone, basta editar o código SVG aqui)
 btn_vg = st.sidebar.button(
-    "🏠   Visão geral",
+    ":material/home:   Visão geral",
     key="nav_vg",
     type="primary" if st.session_state["aba_ativa"] == "Visão Geral" else "secondary",
     use_container_width=True
@@ -302,7 +310,7 @@ if btn_vg:
     st.rerun()
 
 btn_ub = st.sidebar.button(
-    "🚗   Controle Uber",
+    ":material/directions_car:   Controle Uber",
     key="nav_ub",
     type="primary" if st.session_state["aba_ativa"] == "Controle Uber" else "secondary",
     use_container_width=True
@@ -312,7 +320,7 @@ if btn_ub:
     st.rerun()
 
 btn_ex = st.sidebar.button(
-    "📄   Escanear extrato (IA)",
+    ":material/document_scanner:   Escanear extrato (IA)",
     key="nav_ex",
     type="primary" if st.session_state["aba_ativa"] == "Escanear Extrato (IA)" else "secondary",
     use_container_width=True
@@ -322,7 +330,7 @@ if btn_ex:
     st.rerun()
 
 btn_lr = st.sidebar.button(
-    "⚡   Lançamento rápido",
+    ":material/sync_alt:   Lançamento rápido",
     key="nav_lr",
     type="primary" if st.session_state["aba_ativa"] == "Lançamento Rápido" else "secondary",
     use_container_width=True
