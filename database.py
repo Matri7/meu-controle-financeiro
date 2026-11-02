@@ -37,6 +37,18 @@ def atualizar_transacao(id_transacao, dados_atualizados):
 def excluir_transacao(id_transacao):
     supabase.table("transacoes").delete().eq("id", id_transacao).execute()
 
+# --- Funções de Orçamento (Budget) ---
+def carregar_orcamentos():
+    res = supabase.table("orcamentos").select("*").execute()
+    if res.data:
+        return pd.DataFrame(res.data)
+    return pd.DataFrame(columns=["categoria", "valor_teto"])
+
+def salvar_orcamento(categoria, valor_teto):
+    payload = {"categoria": categoria, "valor_teto": float(valor_teto)}
+    supabase.table("orcamentos").upsert(payload, on_conflict="categoria").execute()
+
+# --- Funções de Cache de Relatório Semanal ---
 def obter_relatorio_semanal(semana_ano):
     res = supabase.table("relatorios_semanais").select("*").eq("semana_ano", semana_ano).execute()
     if res.data and len(res.data) > 0:
@@ -49,4 +61,4 @@ def salvar_relatorio_semanal(semana_ano, resumo_curto, analise_completa):
         "resumo_curto": resumo_curto,
         "analise_completa": analise_completa
     }
-    supabase.table("relatorios_semanais").upsert(payload).execute()
+    supabase.table("relatorios_semanais").upsert(payload, on_conflict="semana_ano").execute()
