@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from database import (
     supabase, formatar_data_br, carregar_transacoes, salvar_no_banco,
+    atualizar_transacao, excluir_transacao,
     obter_relatorio_semanal, salvar_relatorio_semanal
 )
 from ai_service import (
@@ -20,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Pocketwise com Card de Insights
+# Estilização CSS Pocketwise
 st.markdown("""
 <style>
     .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
@@ -38,7 +39,6 @@ st.markdown("""
     .metric-value { font-size: 1.85rem; font-weight: 700; color: #f8fafc; }
     .metric-highlight { color: #10b981; }
     
-    /* Card de Insight da IA */
     .insight-card {
         background: linear-gradient(135deg, #10212f 0%, #0d1822 100%);
         border: 1px solid #1e3a4f;
@@ -83,13 +83,55 @@ st.sidebar.markdown("### 💳 FinSmart")
 st.sidebar.caption("Seu orçamento sob foco")
 aba = st.sidebar.radio("Navegar", ["Visão Geral", "Escanear Extrato (IA)", "Lançamento Rápido"])
 
-@st.dialog("Histórico Completo de Transações", width="large")
+# Janela modal com editor interativo (Edição + Exclusão)
+@st.dialog("Histórico e Gerenciamento de Transações", width="large")
 def exibir_modal_historico(dados_completos):
-    df_modal = dados_completos[["data", "descricao", "categoria", "tipo", "metodo_pagamento", "valor"]].copy()
-    df_modal["data"] = df_modal["data"].apply(formatar_data_br)
-    df_modal.rename(columns={"data": "Data", "descricao": "Descrição", "categoria": "Categoria", "tipo": "Tipo", "metodo_pagamento": "Método", "valor": "Valor (R$)"}, inplace=True)
-    st.caption(f"Exibindo todas as {len(df_modal)} transações registradas.")
-    st.dataframe(df_modal, use_container_width=True, hide_index=True)
+    st.caption("Você pode alterar qualquer campo diretamente nas células ou selecionar a linha para remover.")
+
+    df_editavel = dados_completos[["id", "data", "descricao", "valor", "tipo", "categoria", "metodo_pagamento"]].copy()
+
+    editor_output = st.data_editor(
+        df_editavel,
+        use_container_width=True,
+        hide_index=True,
+        num_rows="dynamic",
+        column_config={
+            "id": st.column_config.NumberColumn("ID", disabled=True),
+            "data": st.column_config.DateColumn("Data", format="DD/MM/YYYY", required=True),
+            "descricao": st.column_config.TextColumn("Descrição", required=True),
+            "valor": st.column_config.NumberColumn("Valor (R$)", format="R$ %.2f", min_value=0.01, required=True),
+            "tipo": st.column_config.SelectboxColumn("Tipo", options=["despesa", "receita"], required=True),
+            "categoria": st.column_config.SelectboxColumn("Categoria", options=["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"], required=True),
+            "metodo_pagamento": st.column_config.SelectboxColumn("Método", options=["Pix", "Crédito", "Débito", "Dinheiro", "Boleto"], required=True)
+        },
+        key="editor_transacoes"
+    )
+
+    if st.button("💾 Salvar Alterações no Banco"):
+        alteracoes = st.session_state["editor_transacoes"]
+
+        # Processa exclusões
+        linhas_excluidas = alteracoes.get("deleted_rows", [])
+        for idx in linhas_excluidas:
+            id_para_excluir = int(df_editavel.iloc[idx]["id"])
+            excluir_transacao(id_para_excluir)
+
+        # Processa edições
+        linhas_editadas = alteracoes.get("edited_rows", {})
+        for idx, campos in linhas_editadas.items():
+            id_para_atualizar = int(df_editavel.iloc[idx]["id"])
+            dados_novos = {}
+            for col, val in campos.items():
+                if col == "data":
+                    dados_novos[col] = str(val)
+                elif col == "valor":
+                    dados_novos[col] = float(val)
+                else:
+                    dados_novos[col] = val
+            atualizar_transacao(id_para_atualizar, dados_novos)
+
+        st.success("Modificações salvas com sucesso!")
+        st.rerun()
 
 @st.dialog("Auditoria e Diagnóstico Semanal da IA", width="large")
 def exibir_modal_auditoria(texto_analise):
@@ -103,14 +145,13 @@ if aba == "Visão Geral":
     st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- Seção de Auditoria Semanal Inteligente (Cache no Supabase) ---
+    # --- Seção de Auditoria Semanal Inteligente ---
     if not df.empty:
         hoje = datetime.today().date()
         semana_atual_chave = f"{hoje.year}-W{hoje.isocalendar()[1]}"
         relatorio_cache = obter_relatorio_semanal(semana_atual_chave)
 
         if not relatorio_cache:
-            # Filtra os últimos 7 dias para preparar os números resumidos
             df_temp = df.copy()
             df_temp['data_dt'] = pd.to_datetime(df_temp['data'])
             sete_dias_atras = hoje - timedelta(days=7)
@@ -237,7 +278,7 @@ if aba == "Visão Geral":
             df_exibicao["data"] = df_exibicao["data"].apply(formatar_data_br)
             df_exibicao.rename(columns={"data": "Data", "descricao": "Descrição", "categoria": "Categoria", "tipo": "Tipo", "valor": "Valor (R$)"}, inplace=True)
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
-            if st.button("🔍 Ver histórico completo"):
+            if st.button("🔍 Gerenciar / Ver histórico completo"):
                 exibir_modal_historico(df)
         else:
             st.info("Nenhuma transação cadastrada ainda.")
