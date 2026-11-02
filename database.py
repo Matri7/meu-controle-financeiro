@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
 
-# Inicializa o cliente do Supabase usando os Secrets do Streamlit
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -31,3 +30,17 @@ def salvar_no_banco(dados):
     else:
         supabase.table("transacoes").insert(dados).execute()
         return True, f"✅ Lançado com sucesso: {dados['descricao']} - R$ {dados['valor']:.2f} ({dados['categoria']} / {dados['metodo_pagamento']})"
+
+def obter_relatorio_semanal(semana_ano):
+    res = supabase.table("relatorios_semanais").select("*").eq("semana_ano", semana_ano).execute()
+    if res.data and len(res.data) > 0:
+        return res.data[0]
+    return None
+
+def salvar_relatorio_semanal(semana_ano, resumo_curto, analise_completa):
+    payload = {
+        "semana_ano": semana_ano,
+        "resumo_curto": resumo_curto,
+        "analise_completa": analise_completa
+    }
+    supabase.table("relatorios_semanais").upsert(payload).execute()
