@@ -7,7 +7,8 @@ from database import (
     supabase, formatar_data_br, carregar_transacoes, salvar_no_banco,
     atualizar_transacao, excluir_transacao,
     carregar_orcamentos, salvar_orcamento,
-    obter_relatorio_semanal, salvar_relatorio_semanal
+    obter_relatorio_semanal, salvar_relatorio_semanal,
+    carregar_diarias_uber, salvar_diaria_uber
 )
 from ai_service import (
     processar_comando_texto, processar_comando_audio, processar_arquivo_extrato,
@@ -97,7 +98,7 @@ st.markdown("""
 
 st.sidebar.markdown("### 💳 FinSmart")
 st.sidebar.caption("Seu orçamento sob foco")
-aba = st.sidebar.radio("Navegar", ["Visão Geral", "Escanear Extrato (IA)", "Lançamento Rápido"])
+aba = st.sidebar.radio("Navegar", ["Visão Geral", "Controle Uber", "Escanear Extrato (IA)", "Lançamento Rápido"])
 
 CATEGORIAS_DISPONIVEIS = ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"]
 
@@ -191,16 +192,13 @@ if aba == "Visão Geral":
         st.markdown("## Seu dinheiro, em foco.")
         st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
     
-    # Processa datas para gerar o seletor dinâmico de mês/ano
     if not df.empty:
         df['data_dt'] = pd.to_datetime(df['data'])
         df['periodo_chave'] = df['data_dt'].dt.strftime('%Y-%m')
         
-        # Garante o mês atual na lista mesmo se não houver gastos ainda
         mes_atual_chave = datetime.today().strftime('%Y-%m')
         meses_unicos = sorted(list(set(df['periodo_chave'].tolist() + [mes_atual_chave])), reverse=True)
         
-        # Mapeia para formato amigável (Ex: Novembro / 2026)
         opcoes_meses = {}
         for m in meses_unicos:
             ano, mes_num = m.split('-')
@@ -216,7 +214,6 @@ if aba == "Visão Geral":
                 key="filtro_mes_visao_geral"
             )
             
-        # Filtra os dados apenas para o mês escolhido
         df_mes_ativo = df[df['periodo_chave'] == mes_selecionado].copy()
     else:
         df_mes_ativo = pd.DataFrame(columns=["id", "data", "descricao", "valor", "tipo", "categoria", "metodo_pagamento"])
@@ -224,7 +221,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 1. Auditoria Semanal Inteligente ---
+    # 1. Auditoria Semanal
     if not df.empty:
         hoje = datetime.today().date()
         semana_atual_chave = f"{hoje.year}-W{hoje.isocalendar()[1]}"
@@ -289,7 +286,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 2. Cards de Métricas (Calculados estritamente para o Mês Selecionado) ---
+    # 2. Cards do Mês Selecionado
     receitas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "receita"]["valor"].sum() if not df_mes_ativo.empty else 0.0
     despesas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "despesa"]["valor"].sum() if not df_mes_ativo.empty else 0.0
     saldo_mes = receitas_mes - despesas_mes
@@ -304,7 +301,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 3. Gráfico Histórico Geral Estilo Google Ads ---
+    # 3. Gráfico Histórico
     st.markdown('<div class="chart-box"><div class="chart-pre-header">A VISÃO GERAL</div><div class="chart-header">Fluxo de caixa ao longo do tempo</div><div class="chart-sub">Personalize o intervalo e a escala de visualização.</div>', unsafe_allow_html=True)
     if not df.empty:
         df_temp = df.copy()
@@ -352,12 +349,11 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 4. Extrato Recente e Distribuição do Mês Selecionado ---
+    # 4. Extrato e Categorias
     col_g1, col_g2 = st.columns([1.2, 1])
     with col_g1:
         st.subheader("Extrato do Mês")
         if not df_mes_ativo.empty:
-            # Exibe as 5 transações mais recentes daquele mês
             df_exibicao = df_mes_ativo[["data", "descricao", "categoria", "tipo", "valor"]].head(5).copy()
             df_exibicao["data"] = df_exibicao["data"].apply(formatar_data_br)
             df_exibicao.rename(columns={"data": "Data", "descricao": "Descrição", "categoria": "Categoria", "tipo": "Tipo", "valor": "Valor (R$)"}, inplace=True)
@@ -378,9 +374,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 5. ÚLTIMO QUADRANTE: Orçamento do Mês Selecionado ---
-    ano_sel, mes_sel = [int(v) for v in mes_selecionado.split('-')]
-    
+    # 5. Orçamento do Mês
     with st.container(border=True):
         col_b_title, col_b_btn = st.columns([3.5, 1.5])
         with col_b_title:
@@ -416,7 +410,89 @@ if aba == "Visão Geral":
         else:
             st.info("Nenhum teto orçado cadastrado. Clique em '⚙️ Ajustar Tetos' para planejar seus gastos.")
 
-# ----------------- ABA 2: ESCANEAR EXTRATO COM GEMINI -----------------
+# ----------------- ABA 2: CONTROLE UBER (RENDA EXTRA) -----------------
+elif aba == "Controle Uber":
+    st.markdown("## 🚗 Painel de Desempenho Uber")
+    st.caption("Acompanhe sua renda líquida real, eficiência por km e produtividade por hora.")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    df_uber = carregar_diarias_uber()
+
+    # Métricas Consolidadas
+    if not df_uber.empty:
+        total_bruto = df_uber["ganho_bruto"].sum()
+        total_km = df_uber["km_rodados"].sum()
+        total_horas = df_uber["horas_online"].sum()
+        
+        # Custo operacional estimado por KM rodado
+        custos_totais = (df_uber["km_rodados"] * df_uber["custo_km_padrao"]).sum() + df_uber["outros_gastos"].sum()
+        lucro_liquido_real = total_bruto - custos_totais
+        
+        lucro_por_hora = (lucro_liquido_real / total_horas) if total_horas > 0 else 0.0
+        lucro_por_km = (lucro_liquido_real / total_km) if total_km > 0 else 0.0
+
+        col_u1, col_u2, col_u3, col_u4 = st.columns(4)
+        with col_u1:
+            st.markdown(f'<div class="metric-card"><div class="metric-title">Faturamento Bruto</div><div class="metric-value">R$ {total_bruto:,.2f}</div></div>', unsafe_allow_html=True)
+        with col_u2:
+            st.markdown(f'<div class="metric-card"><div class="metric-title">Lucro Líquido Real</div><div class="metric-value metric-highlight">R$ {lucro_liquido_real:,.2f}</div></div>', unsafe_allow_html=True)
+        with col_u3:
+            st.markdown(f'<div class="metric-card"><div class="metric-title">Rendimento / Hora</div><div class="metric-value">R$ {lucro_por_hora:,.2f}</div></div>', unsafe_allow_html=True)
+        with col_u4:
+            st.markdown(f'<div class="metric-card"><div class="metric-title">Lucro Líquido / KM</div><div class="metric-value">R$ {lucro_por_km:,.2f}</div></div>', unsafe_allow_html=True)
+
+    # Formulário de Fechamento Diário
+    with st.container(border=True):
+        st.markdown("### 📝 Registrar Diária de Corridas")
+        st.caption("Preencha com o resumo do app da Uber no final do dia.")
+        
+        with st.form("form_diaria_uber"):
+            col_f1, col_f2 = st.columns(2)
+            with col_f1:
+                data_diaria = st.date_input("Data da Diária", datetime.today(), format="DD/MM/YYYY")
+                bruto_diaria = st.number_input("Ganhos Brutos (R$)", min_value=0.01, step=5.00, help="Valor total do resumo do app da Uber.")
+                km_diaria = st.number_input("Quilômetros Rodados (Km)", min_value=0.1, step=1.0, help="Distância percorrida informada no app da Uber.")
+            with col_f2:
+                horas_diaria = st.number_input("Tempo Online (em Horas)", min_value=0.1, step=0.5, help="Ex: 2h30min preencha 2.5.")
+                custo_km = st.number_input("Custo Estimado por KM (R$)", value=0.45, step=0.05, help="Média de combustível + desgaste por km.")
+                outros = st.number_input("Outros Gastos do Dia (Lanche/Lava-jato)", value=0.0, step=2.0)
+
+            btn_salvar_diaria = st.form_submit_button("💾 Salvar Diária e Sincronizar com FinSmart")
+            if btn_salvar_diaria:
+                payload_uber = {
+                    "data": str(data_diaria),
+                    "ganho_bruto": float(bruto_diaria),
+                    "km_rodados": float(km_diaria),
+                    "horas_online": float(horas_diaria),
+                    "custo_km_padrao": float(custo_km),
+                    "outros_gastos": float(outros)
+                }
+                salvar_diaria_uber(payload_uber)
+                st.success("Diária salva com sucesso! O valor bruto já foi somado à sua Visão Geral.")
+                st.rerun()
+
+    # Histórico de Diárias
+    st.markdown("### 📋 Histórico de Corridas")
+    if not df_uber.empty:
+        df_uber_tabela = df_uber.copy()
+        df_uber_tabela["custo_estimado"] = (df_uber_tabela["km_rodados"] * df_uber_tabela["custo_km_padrao"]) + df_uber_tabela["outros_gastos"]
+        df_uber_tabela["lucro_real"] = df_uber_tabela["ganho_bruto"] - df_uber_tabela["custo_estimado"]
+        
+        df_uber_exibicao = df_uber_tabela[["data", "ganho_bruto", "km_rodados", "horas_online", "custo_estimado", "lucro_real"]].copy()
+        df_uber_exibicao["data"] = df_uber_exibicao["data"].apply(formatar_data_br)
+        df_uber_exibicao.rename(columns={
+            "data": "Data",
+            "ganho_bruto": "Bruto (R$)",
+            "km_rodados": "Km",
+            "horas_online": "Horas Online",
+            "custo_estimado": "Custo Est. (R$)",
+            "lucro_real": "Lucro Real (R$)"
+        }, inplace=True)
+        st.dataframe(df_uber_exibicao, use_container_width=True, hide_index=True)
+    else:
+        st.info("Nenhuma diária cadastrada ainda.")
+
+# ----------------- ABA 3: ESCANEAR EXTRATO COM GEMINI -----------------
 elif aba == "Escanear Extrato (IA)":
     st.subheader("Leitor Inteligente de Extratos (PDF e Imagens)")
     st.caption("Suba o extrato bancário em PDF do mês ou prints de faturas/comprovantes.")
@@ -495,7 +571,7 @@ elif aba == "Escanear Extrato (IA)":
                 st.session_state["mensagem_status"] = {"tipo": "info", "texto": "ℹ️ Leitura descartada sem salvar nenhuma alteração."}
                 st.rerun()
 
-# ----------------- ABA 3: LANÇAMENTO RÁPIDO -----------------
+# ----------------- ABA 4: LANÇAMENTO RÁPIDO -----------------
 elif aba == "Lançamento Rápido":
     st.subheader("Novo Lançamento")
     st.markdown("#### 🎙️ Entrada Inteligente com IA")
@@ -504,7 +580,7 @@ elif aba == "Lançamento Rápido":
     if opcao_aba3 == "Digitar Texto":
         col_l1, col_l2 = st.columns([4, 1])
         with col_l1:
-            frase_manual = st.text_input("Texto livre:", placeholder="Ex: Gastei 25 reais no uber hoje de manhã no crédito...", key="input_frase_aba3")
+            frase_manual = st.text_input("Texto livre:", placeholder="Ex: Gastei 25 reais no almoço no crédito...", key="input_frase_aba3")
         with col_l2:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
             btn_manual = st.button("Lançar com IA", key="btn_frase_aba3")
