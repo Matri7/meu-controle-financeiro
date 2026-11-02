@@ -83,18 +83,22 @@ st.sidebar.markdown("### 💳 FinSmart")
 st.sidebar.caption("Seu orçamento sob foco")
 aba = st.sidebar.radio("Navegar", ["Visão Geral", "Escanear Extrato (IA)", "Lançamento Rápido"])
 
-# Janela modal com editor interativo (Edição + Exclusão)
+# Janela modal com editor interativo corrigido
 @st.dialog("Histórico e Gerenciamento de Transações", width="large")
 def exibir_modal_historico(dados_completos):
-    st.caption("Você pode alterar qualquer campo diretamente nas células ou selecionar a linha para remover.")
+    st.caption("Pode alterar os campos diretamente nas células e carregar no botão abaixo para guardar as alterações.")
 
     df_editavel = dados_completos[["id", "data", "descricao", "valor", "tipo", "categoria", "metodo_pagamento"]].copy()
+    
+    # Conversão de tipos para evitar conflitos no Streamlit
+    df_editavel["data"] = pd.to_datetime(df_editavel["data"]).dt.date
+    df_editavel["valor"] = df_editavel["valor"].astype(float)
 
     editor_output = st.data_editor(
         df_editavel,
         use_container_width=True,
         hide_index=True,
-        num_rows="dynamic",
+        num_rows="fixed",
         column_config={
             "id": st.column_config.NumberColumn("ID", disabled=True),
             "data": st.column_config.DateColumn("Data", format="DD/MM/YYYY", required=True),
@@ -107,31 +111,27 @@ def exibir_modal_historico(dados_completos):
         key="editor_transacoes"
     )
 
-    if st.button("💾 Salvar Alterações no Banco"):
-        alteracoes = st.session_state["editor_transacoes"]
-
-        # Processa exclusões
-        linhas_excluidas = alteracoes.get("deleted_rows", [])
-        for idx in linhas_excluidas:
-            id_para_excluir = int(df_editavel.iloc[idx]["id"])
-            excluir_transacao(id_para_excluir)
-
-        # Processa edições
+    if st.button("💾 Guardar Alterações no Banco"):
+        alteracoes = st.session_state.get("editor_transacoes", {})
         linhas_editadas = alteracoes.get("edited_rows", {})
-        for idx, campos in linhas_editadas.items():
-            id_para_atualizar = int(df_editavel.iloc[idx]["id"])
-            dados_novos = {}
-            for col, val in campos.items():
-                if col == "data":
-                    dados_novos[col] = str(val)
-                elif col == "valor":
-                    dados_novos[col] = float(val)
-                else:
-                    dados_novos[col] = val
-            atualizar_transacao(id_para_atualizar, dados_novos)
 
-        st.success("Modificações salvas com sucesso!")
-        st.rerun()
+        if linhas_editadas:
+            for idx, campos in linhas_editadas.items():
+                id_para_atualizar = int(df_editavel.iloc[idx]["id"])
+                dados_novos = {}
+                for col, val in campos.items():
+                    if col == "data":
+                        dados_novos[col] = str(val)
+                    elif col == "valor":
+                        dados_novos[col] = float(val)
+                    else:
+                        dados_novos[col] = val
+                atualizar_transacao(id_para_atualizar, dados_novos)
+
+            st.success("Transações atualizadas com sucesso!")
+            st.rerun()
+        else:
+            st.info("Nenhuma alteração foi efetuada nas células.")
 
 @st.dialog("Auditoria e Diagnóstico Semanal da IA", width="large")
 def exibir_modal_auditoria(texto_analise):
