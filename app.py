@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Pocketwise
+# Estilização CSS Pocketwise + Injeção de Máscaras em Tempo Real
 st.markdown("""
 <style>
     .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
@@ -95,40 +95,77 @@ st.markdown("""
     }
     div.stButton > button:first-child:hover { background-color: #059669; color: #ffffff; }
 </style>
+
+<script>
+function aplicarMascarasInput() {
+    const doc = window.parent.document;
+    
+    // Máscara de Moeda (Ex: 1025 -> R$ 10,25)
+    doc.querySelectorAll('input[data-mask="moeda"]').forEach(input => {
+        if (input.dataset.masked) return;
+        input.dataset.masked = "true";
+
+        input.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '');
+            if (!v) {
+                e.target.value = '';
+                return;
+            }
+            let num = (parseInt(v, 10) / 100).toFixed(2);
+            let partes = num.split('.');
+            partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            e.target.value = 'R$ ' + partes.join(',');
+        });
+    });
+
+    // Máscara de Hora (Ex: 125 -> 1:25 h)
+    doc.querySelectorAll('input[data-mask="hora"]').forEach(input => {
+        if (input.dataset.masked) return;
+        input.dataset.masked = "true";
+
+        input.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '');
+            if (!v) {
+                e.target.value = '';
+                return;
+            }
+            let h = 0, m = 0;
+            if (v.length <= 2) {
+                m = parseInt(v, 10);
+            } else {
+                h = parseInt(v.slice(0, -2), 10);
+                m = parseInt(v.slice(-2), 10);
+            }
+            h += Math.floor(m / 60);
+            m = m % 60;
+            e.target.value = h + ':' + (m < 10 ? '0' : '') + m + ' h';
+        });
+    });
+}
+
+// Aplica as máscaras continuamente para garantir o vínculo em re-renderizações do Streamlit
+setInterval(aplicarMascarasInput, 300);
+</script>
 """, unsafe_allow_html=True)
 
-# --- Funções Auxiliares de Parsing de Entrada Inteligente ---
+# --- Funções Robustas de Parsing no Backend (Python) ---
 def parse_moeda_automatica(texto_val):
-    """Permite digitar '3550' -> 35.50 ou '35,50'/'35.50' -> 35.50"""
     if not texto_val:
         return 0.0
-    txt = str(texto_val).strip().replace("R$", "").replace("r$", "").strip()
-    if "," in txt or "." in txt:
-        txt = txt.replace(",", ".")
-        try:
-            return float(txt)
-        except ValueError:
-            return 0.0
+    txt = str(texto_val).strip()
     digitos = "".join([c for c in txt if c.isdigit()])
     if not digitos:
         return 0.0
-    if len(digitos) <= 2:
-        return float(digitos) / 100.0
-    return float(digitos[:-2] + "." + digitos[-2:])
+    return float(digitos) / 100.0
 
 def parse_hora_automatica(texto_hora):
-    """
-    Permite digitar '125' -> 1h 25m -> 1.42 horas decimais
-    Permite '1:25' -> 1.42 horas decimais
-    Permite '45' -> 0h 45m -> 0.75 horas decimais
-    """
     if not texto_hora:
         return 0.0, "00:00"
-    txt = str(texto_hora).strip()
+    txt = str(texto_hora).replace("h", "").replace("H", "").strip()
     if ":" in txt:
         partes = txt.split(":")
-        h = int(partes[0]) if partes[0].isdigit() else 0
-        m = int(partes[1]) if len(partes) > 1 and partes[1].isdigit() else 0
+        h = int(partes[0].strip()) if partes[0].strip().isdigit() else 0
+        m = int(partes[1].strip()) if len(partes) > 1 and partes[1].strip().isdigit() else 0
     else:
         digitos = "".join([c for c in txt if c.isdigit()])
         if not digitos:
@@ -139,12 +176,11 @@ def parse_hora_automatica(texto_hora):
         else:
             h = int(digitos[:-2])
             m = int(digitos[-2:])
-    
-    # Tratamento de minutos extras
+            
     h += m // 60
     m = m % 60
     hora_decimal = round(h + (m / 60.0), 3)
-    hora_formatada = f"{h}:{m:02d}"
+    hora_formatada = f"{h}:{m:02d} h"
     return hora_decimal, hora_formatada
 
 st.sidebar.markdown("### 💳 FinSmart")
@@ -491,33 +527,50 @@ elif aba == "Controle Uber":
         with col_u4:
             st.markdown(f'<div class="metric-card"><div class="metric-title">Lucro Líquido / KM</div><div class="metric-value">R$ {lucro_por_km:,.2f}</div></div>', unsafe_allow_html=True)
 
-    # Formulário de Fechamento Diário com Máscaras Automáticas
+    # Formulário com Atributos de Máscara em Tempo Real
     with st.container(border=True):
         st.markdown("### 📝 Registrar Diária de Corridas")
-        st.caption("Digite apenas os números corridos. O app formata o tempo e as casas decimais automaticamente.")
+        st.caption("Digite apenas os números. O app formata a moeda com centavos e o tempo com horas e minutos em tempo real.")
         
         with st.form("form_diaria_uber"):
             col_f1, col_f2 = st.columns(2)
             with col_f1:
                 data_diaria = st.date_input("Data da Diária", datetime.today(), format="DD/MM/YYYY")
-                bruto_txt = st.text_input("Ganhos Brutos (R$)", placeholder="Ex: 13550 para R$ 135,50")
+                bruto_txt = st.text_input("Ganhos Brutos (R$)", value="R$ 0,00", key="input_uber_bruto", help="Digite apenas os números. A vírgula ajusta automaticamente.")
                 km_txt = st.text_input("Quilômetros Rodados (Km)", placeholder="Ex: 52 ou 52.4")
             with col_f2:
-                tempo_txt = st.text_input("Tempo Online", placeholder="Ex: 125 para 1h25m ou 40 para 40m")
-                custo_km_txt = st.text_input("Custo Estimado por KM (R$)", value="0.45", placeholder="Ex: 45 para R$ 0,45")
-                outros_txt = st.text_input("Outros Gastos (R$)", placeholder="Ex: 1200 para R$ 12,00 (opcional)")
+                tempo_txt = st.text_input("Tempo Online", value="0:00 h", key="input_uber_tempo", help="Ex: digite 125 para 1:25 h ou 45 para 0:45 h.")
+                custo_km_txt = st.text_input("Custo Estimado por KM (R$)", value="R$ 0,45", key="input_uber_custokm")
+                outros_txt = st.text_input("Outros Gastos (R$)", value="R$ 0,00", key="input_uber_outros")
+
+            # Injeta atributos de máscara nos inputs específicos via HTML invisível
+            st.markdown("""
+            <script>
+                const doc = window.parent.document;
+                const brutoEl = doc.querySelector('input[aria-label="Ganhos Brutos (R$)"]');
+                if (brutoEl) brutoEl.setAttribute('data-mask', 'moeda');
+                
+                const tempoEl = doc.querySelector('input[aria-label="Tempo Online"]');
+                if (tempoEl) tempoEl.setAttribute('data-mask', 'hora');
+                
+                const custoKmEl = doc.querySelector('input[aria-label="Custo Estimado por KM (R$)"]');
+                if (custoKmEl) custoKmEl.setAttribute('data-mask', 'moeda');
+
+                const outrosEl = doc.querySelector('input[aria-label="Outros Gastos (R$)"]');
+                if (outrosEl) outrosEl.setAttribute('data-mask', 'moeda');
+            </script>
+            """, unsafe_allow_html=True)
 
             btn_salvar_diaria = st.form_submit_button("💾 Salvar Diária e Sincronizar com FinSmart")
             if btn_salvar_diaria:
-                # Conversões inteligentes
                 val_bruto = parse_moeda_automatica(bruto_txt)
-                val_km = parse_moeda_automatica(km_txt) if ("," not in km_txt and "." not in km_txt and len(km_txt) > 2) else float(km_txt.replace(",", ".") if km_txt else 0.0)
+                val_km = float(km_txt.replace(",", ".")) if km_txt.strip() else 0.0
                 val_horas, hora_legivel = parse_hora_automatica(tempo_txt)
-                val_custo_km = parse_moeda_automatica(custo_km_txt) if ("," not in custo_km_txt and "." not in custo_km_txt and len(custo_km_txt) > 2) else float(custo_km_txt.replace(",", ".") if custo_km_txt else 0.45)
+                val_custo_km = parse_moeda_automatica(custo_km_txt)
                 val_outros = parse_moeda_automatica(outros_txt)
 
                 if val_bruto <= 0:
-                    st.error("Informe um ganho bruto válido.")
+                    st.error("Informe um ganho bruto válido superior a zero.")
                 else:
                     payload_uber = {
                         "data": str(data_diaria),
@@ -529,7 +582,7 @@ elif aba == "Controle Uber":
                         "observacao": f"Tempo: {hora_legivel}"
                     }
                     salvar_diaria_uber(payload_uber)
-                    st.success(f"Diária registrada com sucesso! Tempo computado: {hora_legivel} | R$ {val_bruto:,.2f}")
+                    st.success(f"Diária registrada com sucesso: {hora_legivel} | R$ {val_bruto:,.2f}")
                     st.rerun()
 
     # Histórico de Diárias com Edição Interativa
@@ -702,13 +755,21 @@ elif aba == "Lançamento Rápido":
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             desc = st.text_input("Descrição (Ex: Padaria, Salário)")
-            valor_manual_txt = st.text_input("Valor (R$)", placeholder="Ex: 3550 para R$ 35,50")
+            valor_manual_txt = st.text_input("Valor (R$)", value="R$ 0,00", key="input_transacao_manual")
             data_t = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
         with col_f2:
             tipo = st.selectbox("Tipo", ["despesa", "receita"])
             categoria = st.selectbox("Categoria", ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"])
             metodo = st.selectbox("Método de Pagamento", ["Pix", "Crédito", "Débito", "Dinheiro"])
         
+        st.markdown("""
+        <script>
+            const doc = window.parent.document;
+            const valManualEl = doc.querySelector('input[aria-label="Valor (R$)"]');
+            if (valManualEl) valManualEl.setAttribute('data-mask', 'moeda');
+        </script>
+        """, unsafe_allow_html=True)
+
         submit = st.form_submit_button("Salvar Manualmente")
         if submit:
             valor_num = parse_moeda_automatica(valor_manual_txt)
