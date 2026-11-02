@@ -101,7 +101,7 @@ st.markdown("""
         color: #f1f5f9 !important;
     }
     
-    /* Retângulo da Aba Ativa */
+    /* Retângulo da Aba Ativa na Sidebar */
     section[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
         background-color: #101c27 !important;
         color: #ffffff !important;
@@ -112,6 +112,30 @@ st.markdown("""
     }
     section[data-testid="stSidebar"] div.stButton > button[kind="primary"] span[data-testid="stIconMaterial"] {
         color: #2dd4bf !important;
+    }
+
+    /* Estilo das Abas Retangulares dentro dos Modais/Dialogs (Sem Bolinhas) */
+    div[data-testid="stDialog"] div.stButton > button {
+        width: 100% !important;
+        border-radius: 12px !important;
+        padding: 10px 14px !important;
+        font-size: 0.90rem !important;
+        font-weight: 500 !important;
+        background-color: #0c141d !important;
+        color: #8fa0b5 !important;
+        border: 1px solid #182635 !important;
+        transition: all 0.15s ease !important;
+    }
+    div[data-testid="stDialog"] div.stButton > button:hover {
+        background-color: #111d2a !important;
+        color: #ffffff !important;
+    }
+    div[data-testid="stDialog"] div.stButton > button[kind="primary"] {
+        background-color: #10212f !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        border: 1px solid #203c52 !important;
+        border-left: 3.5px solid #2dd4bf !important;
     }
 
     /* Cards e Métricas */
@@ -149,7 +173,7 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* Item de Transação Estilo Lista Luxo (print de referência) */
+    /* Linhas de Transação */
     .tx-row {
         display: flex;
         align-items: center;
@@ -208,20 +232,23 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    div.main div.stButton > button:first-child { 
-        background-color: #10b981; 
-        color: #062419; 
-        font-weight: 600; 
-        border: none; 
-        border-radius: 10px; 
-        padding: 10px 22px; 
-        transition: all 0.2s ease-in-out; 
+    div.main div.stButton > button.btn-principal { 
+        background-color: #10b981 !important; 
+        color: #062419 !important; 
+        font-weight: 600 !important; 
+        border: none !important; 
+        border-radius: 10px !important; 
+        padding: 10px 22px !important; 
+        transition: all 0.2s ease-in-out !important; 
     }
-    div.main div.stButton > button:first-child:hover { background-color: #059669; color: #ffffff; }
+    div.main div.stButton > button.btn-principal:hover { 
+        background-color: #059669 !important; 
+        color: #ffffff !important; 
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Injetor global de máscara de maquininha de cartão
+# Injetor de Máscara de Maquininha de Cartão
 components.html("""
 <script>
 function attachMasks() {
@@ -294,7 +321,7 @@ setInterval(attachMasks, 200);
 </script>
 """, height=0, width=0)
 
-# Parsing Backend do Python
+# Funções Backend de Parsing
 def parse_moeda_automatica(texto_val):
     if not texto_val:
         return 0.0
@@ -329,7 +356,6 @@ def parse_hora_automatica(texto_hora):
     hora_formatada = f"{h}:{m:02d} h"
     return hora_decimal, hora_formatada
 
-# Mapa de Ícones para Cada Categoria (Visual E-commerce / Pocketwise)
 MAPA_ICONES_CAT = {
     "Alimentação": "🍔",
     "Transporte": "🚗",
@@ -363,7 +389,6 @@ st.sidebar.markdown("""
 if "aba_ativa" not in st.session_state:
     st.session_state["aba_ativa"] = "Visão Geral"
 
-# Botões Oficiais da Barra Lateral com Ícones Material Design
 btn_vg = st.sidebar.button(
     "Visão geral",
     icon=":material/home:",
@@ -418,28 +443,56 @@ MESES_PT = {
     9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
 }
 
-# --- Janela Modal de Nova Transação (Texto, Voz, Extrato ou Manual) ---
+# --- MODAL "ADICIONAR TRANSAÇÃO" COM DESIGN RETANGULAR IDÊNTICO À SIDEBAR ---
 @st.dialog("Adicionar Transação", width="large")
 def exibir_modal_adicionar_transacao():
     st.caption("Escolha a melhor forma para registrar seu lançamento financeiro:")
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    metodo_add = st.radio(
-        "Forma de entrada:",
-        ["Comando Rápido (Texto / Voz)", "Escanear Extrato (IA)", "Lançamento Manual"],
-        horizontal=True
-    )
-    
-    if metodo_add == "Comando Rápido (Texto / Voz)":
+    # Estado da aba interna do modal
+    if "modal_modo_entrada" not in st.session_state:
+        st.session_state["modal_modo_entrada"] = "Comando Rápido"
+    if "modal_sub_comando" not in st.session_state:
+        st.session_state["modal_sub_comando"] = "Texto"
+
+    # Seletores Primários em Retângulos Alinhados
+    col_m1, col_m2, col_m3 = st.columns(3)
+    with col_m1:
+        if st.button("⚡   Comando Rápido", key="btn_modal_rapido", type="primary" if st.session_state["modal_modo_entrada"] == "Comando Rápido" else "secondary", use_container_width=True):
+            st.session_state["modal_modo_entrada"] = "Comando Rápido"
+            st.rerun()
+    with col_m2:
+        if st.button("📄   Escanear Extrato (IA)", key="btn_modal_extrato", type="primary" if st.session_state["modal_modo_entrada"] == "Escanear Extrato" else "secondary", use_container_width=True):
+            st.session_state["modal_modo_entrada"] = "Escanear Extrato"
+            st.rerun()
+    with col_m3:
+        if st.button("📝   Lançamento Manual", key="btn_modal_manual", type="primary" if st.session_state["modal_modo_entrada"] == "Lançamento Manual" else "secondary", use_container_width=True):
+            st.session_state["modal_modo_entrada"] = "Lançamento Manual"
+            st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 1. ABA COMANDO RÁPIDO
+    if st.session_state["modal_modo_entrada"] == "Comando Rápido":
+        col_s1, col_s2, _ = st.columns([1.5, 1.5, 3])
+        with col_s1:
+            if st.button("💬 Digitar Frase", key="btn_sub_txt", type="primary" if st.session_state["modal_sub_comando"] == "Texto" else "secondary", use_container_width=True):
+                st.session_state["modal_sub_comando"] = "Texto"
+                st.rerun()
+        with col_s2:
+            if st.button("🎙️ Gravar Voz", key="btn_sub_audio", type="primary" if st.session_state["modal_sub_comando"] == "Áudio" else "secondary", use_container_width=True):
+                st.session_state["modal_sub_comando"] = "Áudio"
+                st.rerun()
+
         st.markdown("<br>", unsafe_allow_html=True)
-        sub_tipo = st.radio("Escolha:", ["Digitar Frase", "Gravar Voz"], horizontal=True, label_visibility="collapsed")
-        
-        if sub_tipo == "Digitar Frase":
+
+        if st.session_state["modal_sub_comando"] == "Texto":
+            st.caption("Dite ou digite:")
             col_t1, col_t2 = st.columns([4, 1.2])
             with col_t1:
-                frase_dig = st.text_input("Dite ou digite:", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...")
+                frase_dig = st.text_input("Comando de texto", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...", label_visibility="collapsed")
             with col_t2:
-                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                btn_lancar_txt = st.button("Lançar com IA")
+                btn_lancar_txt = st.button("Lançar com IA", key="btn_sub_lancar_ia", use_container_width=True)
             
             if btn_lancar_txt and frase_dig.strip():
                 with st.spinner("Processando..."):
@@ -450,10 +503,11 @@ def exibir_modal_adicionar_transacao():
                     else:
                         st.warning(msg)
                         
-        elif sub_tipo == "Gravar Voz":
-            audio_gravado = st.audio_input("Grave sua mensagem de voz:")
-            if audio_gravado is not None and st.button("Processar Áudio com IA"):
-                with st.spinner("Processando áudio..."):
+        elif st.session_state["modal_sub_comando"] == "Áudio":
+            st.caption("Grave sua mensagem de voz:")
+            audio_gravado = st.audio_input("Áudio", label_visibility="collapsed")
+            if audio_gravado is not None and st.button("Processar Áudio com IA", key="btn_proc_audio_modal"):
+                with st.spinner("Processando áudio com IA..."):
                     ok, msg = processar_comando_audio(audio_gravado.read(), mime_type="audio/wav")
                     if ok:
                         st.success(msg)
@@ -461,9 +515,10 @@ def exibir_modal_adicionar_transacao():
                     else:
                         st.warning(msg)
 
-    elif metodo_add == "Escanear Extrato (IA)":
-        st.markdown("<br>", unsafe_allow_html=True)
-        uploaded_file = st.file_uploader("Arquivo de fatura ou extrato (PDF, PNG ou JPG)", type=["png", "jpg", "jpeg", "pdf"])
+    # 2. ABA ESCANEAR EXTRATO
+    elif st.session_state["modal_modo_entrada"] == "Escanear Extrato":
+        st.caption("Suba o extrato bancário em PDF ou comprovantes/prints:")
+        uploaded_file = st.file_uploader("Arquivo", type=["png", "jpg", "jpeg", "pdf"], label_visibility="collapsed")
         if uploaded_file:
             is_pdf = uploaded_file.name.lower().endswith(".pdf")
             if not is_pdf:
@@ -472,7 +527,7 @@ def exibir_modal_adicionar_transacao():
             else:
                 st.info(f"📄 Arquivo PDF carregado: {uploaded_file.name}")
                 
-            if st.button("Analisar e Extrair Transações"):
+            if st.button("Analisar e Extrair Transações", key="btn_proc_doc_modal"):
                 with st.spinner("IA analisando linhas do documento..."):
                     arquivo_in = uploaded_file.read() if is_pdf else img_prev
                     try:
@@ -486,8 +541,8 @@ def exibir_modal_adicionar_transacao():
                     except Exception as e:
                         st.error(f"Erro ao processar documento: {e}")
 
-    elif metodo_add == "Lançamento Manual":
-        st.markdown("<br>", unsafe_allow_html=True)
+    # 3. ABA LANÇAMENTO MANUAL
+    elif st.session_state["modal_modo_entrada"] == "Lançamento Manual":
         with st.form("form_modal_manual"):
             col_m1, col_m2 = st.columns(2)
             with col_m1:
@@ -750,11 +805,9 @@ if aba == "Visão Geral":
 
 # ----------------- ABA 2: TRANSAÇÕES (DESIGN E-COMMERCE / POCKETWISE) -----------------
 elif aba == "Transações":
-    # Inicializa limite da paginação
     if "limite_transacoes" not in st.session_state:
         st.session_state["limite_transacoes"] = 20
 
-    # Topo idêntico ao print
     col_t_title, col_t_btn = st.columns([3.5, 1.5])
     with col_t_title:
         st.caption("• SUA SITUAÇÃO FINANCEIRA  /  MOVIMENTAÇÕES")
@@ -767,7 +820,7 @@ elif aba == "Transações":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Barra de Filtros no estilo do print (Busca + Tipo + Categoria)
+    # Filtros em Linha
     col_f_busca, col_f_tipo, col_f_cat = st.columns([2.5, 1.2, 1.2])
     with col_f_busca:
         busca_termo = st.text_input("Pesquisar", placeholder="🔍 Pesquisar transações...", label_visibility="collapsed")
@@ -776,7 +829,6 @@ elif aba == "Transações":
     with col_f_cat:
         filtro_cat = st.selectbox("Categoria", ["Todas as categorias"] + CATEGORIAS_DISPONIVEIS, label_visibility="collapsed")
 
-    # Aplicação dos Filtros
     df_tx = df.copy()
     if not df_tx.empty:
         if busca_termo.strip():
@@ -790,7 +842,6 @@ elif aba == "Transações":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Subcabeçalho de Contagem de Atividades
     total_encontradas = len(df_tx)
     st.markdown(f"""
     <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #14202c; margin-bottom: 12px;">
@@ -804,7 +855,6 @@ elif aba == "Transações":
     """, unsafe_allow_html=True)
 
     if not df_tx.empty:
-        # Fatiamento no limite atual (Inicia com 20)
         df_exibicao = df_tx.head(st.session_state["limite_transacoes"]).copy()
         
         for _, row in df_exibicao.iterrows():
@@ -816,7 +866,6 @@ elif aba == "Transações":
             tipo_mov = row["tipo"]
             metodo = row.get("metodo_pagamento", "Pix")
 
-            # Formatação monetária com sinal
             if tipo_mov == "despesa":
                 val_formatado = f"- R$ {val:,.2f}"
                 css_val = "tx-val-despesa"
@@ -839,7 +888,6 @@ elif aba == "Transações":
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Botão de Paginação E-commerce: Carregar mais 20
         col_p1, col_p2, col_p3 = st.columns([2, 1.5, 2])
         with col_p2:
             if total_encontradas > st.session_state["limite_transacoes"]:
@@ -849,7 +897,6 @@ elif aba == "Transações":
             else:
                 st.caption(f"Mostrando todas as {total_encontradas} transações.")
                 
-        # Ação para gerenciar/editar linhas
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("✏️ Abrir editor de planilhas para alterações em massa"):
             exibir_modal_historico(df)
@@ -886,7 +933,7 @@ elif aba == "Controle Uber":
         with col_u4:
             st.markdown(f'<div class="metric-card"><div class="metric-title">Lucro Líquido / KM</div><div class="metric-value">R$ {lucro_por_km:,.2f}</div></div>', unsafe_allow_html=True)
 
-    # Formulário com Máscara Estilo Maquininha
+    # Formulário Uber com Máscara
     with st.container(border=True):
         st.markdown("### 📝 Registrar Diária de Corridas")
         st.caption("Digite apenas os números. O campo formata automaticamente como uma maquininha de cartão.")
