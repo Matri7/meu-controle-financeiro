@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from PIL import Image
 from datetime import datetime, timedelta
@@ -24,7 +25,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Pocketwise + Injeção de Máscaras em Tempo Real
+# Estilização CSS Pocketwise
 st.markdown("""
 <style>
     .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
@@ -95,60 +96,89 @@ st.markdown("""
     }
     div.stButton > button:first-child:hover { background-color: #059669; color: #ffffff; }
 </style>
-
-<script>
-function aplicarMascarasInput() {
-    const doc = window.parent.document;
-    
-    // Máscara de Moeda (Ex: 1025 -> R$ 10,25)
-    doc.querySelectorAll('input[data-mask="moeda"]').forEach(input => {
-        if (input.dataset.masked) return;
-        input.dataset.masked = "true";
-
-        input.addEventListener('input', (e) => {
-            let v = e.target.value.replace(/\D/g, '');
-            if (!v) {
-                e.target.value = '';
-                return;
-            }
-            let num = (parseInt(v, 10) / 100).toFixed(2);
-            let partes = num.split('.');
-            partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            e.target.value = 'R$ ' + partes.join(',');
-        });
-    });
-
-    // Máscara de Hora (Ex: 125 -> 1:25 h)
-    doc.querySelectorAll('input[data-mask="hora"]').forEach(input => {
-        if (input.dataset.masked) return;
-        input.dataset.masked = "true";
-
-        input.addEventListener('input', (e) => {
-            let v = e.target.value.replace(/\D/g, '');
-            if (!v) {
-                e.target.value = '';
-                return;
-            }
-            let h = 0, m = 0;
-            if (v.length <= 2) {
-                m = parseInt(v, 10);
-            } else {
-                h = parseInt(v.slice(0, -2), 10);
-                m = parseInt(v.slice(-2), 10);
-            }
-            h += Math.floor(m / 60);
-            m = m % 60;
-            e.target.value = h + ':' + (m < 10 ? '0' : '') + m + ' h';
-        });
-    });
-}
-
-// Aplica as máscaras continuamente para garantir o vínculo em re-renderizações do Streamlit
-setInterval(aplicarMascarasInput, 300);
-</script>
 """, unsafe_allow_html=True)
 
-# --- Funções Robustas de Parsing no Backend (Python) ---
+# Injetor global de máscara direta no DOM Pai
+components.html("""
+<script>
+function attachMasks() {
+    try {
+        const parentDoc = window.parent.document;
+        if (!parentDoc) return;
+
+        // 1. MÁSCARA ESTILO MAQUININHA DE CARTÃO
+        // Aplica nos campos de Ganhos Brutos, Outros Gastos e Valor Manual
+        const moneyInputs = parentDoc.querySelectorAll('input[aria-label*="Ganhos Brutos"], input[aria-label*="Outros Gastos"], input[aria-label*="Valor (R$)"], input[aria-label*="Custo Estimado"]');
+        
+        moneyInputs.forEach(input => {
+            if (input.dataset.posMask === "true") return;
+            input.dataset.posMask = "true";
+
+            // Se estiver vazio ao focar, inicializa com R$ 0,00
+            input.addEventListener('focus', function() {
+                if (!this.value || this.value.trim() === '') {
+                    this.value = 'R$ 0,00';
+                }
+            });
+
+            input.addEventListener('input', function(e) {
+                let digitos = this.value.replace(/\\D/g, '');
+                if (!digitos) {
+                    this.value = 'R$ 0,00';
+                } else {
+                    let num = (parseInt(digitos, 10) / 100).toFixed(2);
+                    let partes = num.split('.');
+                    partes[0] = partes[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');
+                    this.value = 'R$ ' + partes[0] + ',' + partes[1];
+                }
+                // Dispara evento nativo para sincronizar com o React do Streamlit
+                this.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+
+        // 2. MÁSCARA DE TEMPO (Ex: 110 -> 1:10 h | 45 -> 0:45 h)
+        const timeInputs = parentDoc.querySelectorAll('input[aria-label*="Tempo Online"]');
+        timeInputs.forEach(input => {
+            if (input.dataset.timeMask === "true") return;
+            input.dataset.timeMask = "true";
+
+            input.addEventListener('focus', function() {
+                if (!this.value || this.value.trim() === '') {
+                    this.value = '0:00 h';
+                }
+            });
+
+            input.addEventListener('input', function(e) {
+                let digitos = this.value.replace(/\\D/g, '');
+                if (!digitos) {
+                    this.value = '0:00 h';
+                } else {
+                    let h = 0, m = 0;
+                    if (digitos.length <= 2) {
+                        m = parseInt(digitos, 10);
+                    } else {
+                        h = parseInt(digitos.slice(0, -2), 10);
+                        m = parseInt(digitos.slice(-2), 10);
+                    }
+                    h += Math.floor(m / 60);
+                    m = m % 60;
+                    this.value = h + ':' + (m < 10 ? '0' : '') + m + ' h';
+                }
+                this.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// Roda a cada 200ms para garantir que re-renderizações não percam o ouvinte
+setInterval(attachMasks, 200);
+</script>
+""", height=0, width=0)
+
+# Parsing Backend do Python
 def parse_moeda_automatica(texto_val):
     if not texto_val:
         return 0.0
@@ -160,7 +190,7 @@ def parse_moeda_automatica(texto_val):
 
 def parse_hora_automatica(texto_hora):
     if not texto_hora:
-        return 0.0, "00:00"
+        return 0.0, "0:00 h"
     txt = str(texto_hora).replace("h", "").replace("H", "").strip()
     if ":" in txt:
         partes = txt.split(":")
@@ -169,7 +199,7 @@ def parse_hora_automatica(texto_hora):
     else:
         digitos = "".join([c for c in txt if c.isdigit()])
         if not digitos:
-            return 0.0, "00:00"
+            return 0.0, "0:00 h"
         if len(digitos) <= 2:
             h = 0
             m = int(digitos)
@@ -527,39 +557,21 @@ elif aba == "Controle Uber":
         with col_u4:
             st.markdown(f'<div class="metric-card"><div class="metric-title">Lucro Líquido / KM</div><div class="metric-value">R$ {lucro_por_km:,.2f}</div></div>', unsafe_allow_html=True)
 
-    # Formulário com Atributos de Máscara em Tempo Real
+    # Formulário com Máscara Estilo Maquininha
     with st.container(border=True):
         st.markdown("### 📝 Registrar Diária de Corridas")
-        st.caption("Digite apenas os números. O app formata a moeda com centavos e o tempo com horas e minutos em tempo real.")
+        st.caption("Digite apenas os números. O campo formata automaticamente como uma maquininha de cartão.")
         
         with st.form("form_diaria_uber"):
             col_f1, col_f2 = st.columns(2)
             with col_f1:
                 data_diaria = st.date_input("Data da Diária", datetime.today(), format="DD/MM/YYYY")
-                bruto_txt = st.text_input("Ganhos Brutos (R$)", value="R$ 0,00", key="input_uber_bruto", help="Digite apenas os números. A vírgula ajusta automaticamente.")
+                bruto_txt = st.text_input("Ganhos Brutos (R$)", value="R$ 0,00", help="Ex: digite 12523 para virar R$ 125,23.")
                 km_txt = st.text_input("Quilômetros Rodados (Km)", placeholder="Ex: 52 ou 52.4")
             with col_f2:
-                tempo_txt = st.text_input("Tempo Online", value="0:00 h", key="input_uber_tempo", help="Ex: digite 125 para 1:25 h ou 45 para 0:45 h.")
-                custo_km_txt = st.text_input("Custo Estimado por KM (R$)", value="R$ 0,45", key="input_uber_custokm")
-                outros_txt = st.text_input("Outros Gastos (R$)", value="R$ 0,00", key="input_uber_outros")
-
-            # Injeta atributos de máscara nos inputs específicos via HTML invisível
-            st.markdown("""
-            <script>
-                const doc = window.parent.document;
-                const brutoEl = doc.querySelector('input[aria-label="Ganhos Brutos (R$)"]');
-                if (brutoEl) brutoEl.setAttribute('data-mask', 'moeda');
-                
-                const tempoEl = doc.querySelector('input[aria-label="Tempo Online"]');
-                if (tempoEl) tempoEl.setAttribute('data-mask', 'hora');
-                
-                const custoKmEl = doc.querySelector('input[aria-label="Custo Estimado por KM (R$)"]');
-                if (custoKmEl) custoKmEl.setAttribute('data-mask', 'moeda');
-
-                const outrosEl = doc.querySelector('input[aria-label="Outros Gastos (R$)"]');
-                if (outrosEl) outrosEl.setAttribute('data-mask', 'moeda');
-            </script>
-            """, unsafe_allow_html=True)
+                tempo_txt = st.text_input("Tempo Online", value="0:00 h", help="Ex: digite 110 para virar 1:10 h.")
+                custo_km_txt = st.text_input("Custo Estimado por KM (R$)", value="R$ 0,45")
+                outros_txt = st.text_input("Outros Gastos (R$)", value="R$ 0,00")
 
             btn_salvar_diaria = st.form_submit_button("💾 Salvar Diária e Sincronizar com FinSmart")
             if btn_salvar_diaria:
@@ -585,7 +597,7 @@ elif aba == "Controle Uber":
                     st.success(f"Diária registrada com sucesso: {hora_legivel} | R$ {val_bruto:,.2f}")
                     st.rerun()
 
-    # Histórico de Diárias com Edição Interativa
+    # Histórico de Diárias
     st.markdown("### 📋 Histórico e Edição de Diárias")
     st.caption("Dê um duplo clique para alterar qualquer número ou selecione a linha para excluir.")
     
@@ -755,21 +767,13 @@ elif aba == "Lançamento Rápido":
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             desc = st.text_input("Descrição (Ex: Padaria, Salário)")
-            valor_manual_txt = st.text_input("Valor (R$)", value="R$ 0,00", key="input_transacao_manual")
+            valor_manual_txt = st.text_input("Valor (R$)", value="R$ 0,00")
             data_t = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
         with col_f2:
             tipo = st.selectbox("Tipo", ["despesa", "receita"])
             categoria = st.selectbox("Categoria", ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"])
             metodo = st.selectbox("Método de Pagamento", ["Pix", "Crédito", "Débito", "Dinheiro"])
         
-        st.markdown("""
-        <script>
-            const doc = window.parent.document;
-            const valManualEl = doc.querySelector('input[aria-label="Valor (R$)"]');
-            if (valManualEl) valManualEl.setAttribute('data-mask', 'moeda');
-        </script>
-        """, unsafe_allow_html=True)
-
         submit = st.form_submit_button("Salvar Manualmente")
         if submit:
             valor_num = parse_moeda_automatica(valor_manual_txt)
