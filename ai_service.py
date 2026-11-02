@@ -34,7 +34,7 @@ def processar_comando_texto(texto_usuario):
     
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt,
             config=config
         )
@@ -112,7 +112,7 @@ def processar_arquivo_extrato(arquivo_ou_img, is_pdf=False):
 
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=payload,
             config=config
         )
@@ -127,3 +127,30 @@ def processar_arquivo_extrato(arquivo_ou_img, is_pdf=False):
     if isinstance(dados, dict):
         dados = [dados]
     return dados
+
+def gerar_auditoria_semanal(dados_resumidos_txt):
+    prompt = f"""
+    Você é um consultor financeiro pessoal ágil e analítico.
+    Analise o seguinte consolidado da semana financeira do usuário:
+
+    {dados_resumidos_txt}
+
+    Retorne OBRIGATORIAMENTE um JSON puro com esta estrutura:
+    {{
+        "resumo_curto": "Frase de 1 ou 2 linhas resumindo o comportamento do dinheiro na semana de forma direta e motivadora/alerta.",
+        "analise_completa": "Análise detalhada em markdown (use bullet points) destacando: 1. Diagnóstico do fluxo, 2. Categoria mais pesada ou atípica, 3. Uma sugestão prática de ajuste para esta semana."
+    }}
+    """
+    config = types.GenerateContentConfig(response_mime_type="application/json")
+    try:
+        response = gemini_client.models.generate_content(
+            model='gemini-3.8-flash',
+            contents=prompt,
+            config=config
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        return {
+            "resumo_curto": "Dados da semana compilados com sucesso.",
+            "analise_completa": "Não foi possível gerar a análise detalhada no momento."
+        }
