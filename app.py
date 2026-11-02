@@ -33,6 +33,7 @@ st.markdown("""
         border: 1px solid #1c2e40;
         border-radius: 16px;
         padding: 22px;
+        margin-bottom: 16px;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
     }
     .metric-title {
