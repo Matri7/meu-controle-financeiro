@@ -73,7 +73,6 @@ st.markdown("""
     .chart-header { font-size: 1.25rem; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
     .chart-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 16px; }
 
-    /* Customização dos containers com borda no dark mode */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background: #101c27;
         border: 1px solid #1c2e40 !important;
@@ -102,7 +101,12 @@ aba = st.sidebar.radio("Navegar", ["Visão Geral", "Escanear Extrato (IA)", "Lan
 
 CATEGORIAS_DISPONIVEIS = ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"]
 
-# Janela modal para configurar os tetos de orçamento
+MESES_PT = {
+    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+    5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+    9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+}
+
 @st.dialog("Definir Tetos de Orçamento Mensal", width="medium")
 def exibir_modal_orcamentos(df_orcamentos_atuais):
     st.caption("Estabeleça o valor máximo que você planeja gastar por categoria a cada mês.")
@@ -126,7 +130,6 @@ def exibir_modal_orcamentos(df_orcamentos_atuais):
             st.success("Orçamentos salvos com sucesso!")
             st.rerun()
 
-# Janela modal com editor interativo corrigido
 @st.dialog("Histórico e Gerenciamento de Transações", width="large")
 def exibir_modal_historico(dados_completos):
     st.caption("Pode alterar os campos diretamente nas células e carregar no botão abaixo para guardar as alterações.")
@@ -183,8 +186,42 @@ df_orc = carregar_orcamentos()
 
 # ----------------- ABA 1: VISÃO GERAL -----------------
 if aba == "Visão Geral":
-    st.markdown("## Seu dinheiro, em foco.")
-    st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
+    col_titulo, col_mes_filtro = st.columns([3, 1.5])
+    with col_titulo:
+        st.markdown("## Seu dinheiro, em foco.")
+        st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
+    
+    # Processa datas para gerar o seletor dinâmico de mês/ano
+    if not df.empty:
+        df['data_dt'] = pd.to_datetime(df['data'])
+        df['periodo_chave'] = df['data_dt'].dt.strftime('%Y-%m')
+        
+        # Garante o mês atual na lista mesmo se não houver gastos ainda
+        mes_atual_chave = datetime.today().strftime('%Y-%m')
+        meses_unicos = sorted(list(set(df['periodo_chave'].tolist() + [mes_atual_chave])), reverse=True)
+        
+        # Mapeia para formato amigável (Ex: Novembro / 2026)
+        opcoes_meses = {}
+        for m in meses_unicos:
+            ano, mes_num = m.split('-')
+            opcoes_meses[m] = f"{MESES_PT[int(mes_num)]} / {ano}"
+        
+        with col_mes_filtro:
+            st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+            mes_selecionado = st.selectbox(
+                "Mês de referência:",
+                options=meses_unicos,
+                format_func=lambda x: opcoes_meses[x],
+                index=meses_unicos.index(mes_atual_chave) if mes_atual_chave in meses_unicos else 0,
+                key="filtro_mes_visao_geral"
+            )
+            
+        # Filtra os dados apenas para o mês escolhido
+        df_mes_ativo = df[df['periodo_chave'] == mes_selecionado].copy()
+    else:
+        df_mes_ativo = pd.DataFrame(columns=["id", "data", "descricao", "valor", "tipo", "categoria", "metodo_pagamento"])
+        mes_selecionado = datetime.today().strftime('%Y-%m')
+
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- 1. Auditoria Semanal Inteligente ---
@@ -194,10 +231,8 @@ if aba == "Visão Geral":
         relatorio_cache = obter_relatorio_semanal(semana_atual_chave)
 
         if not relatorio_cache:
-            df_temp = df.copy()
-            df_temp['data_dt'] = pd.to_datetime(df_temp['data'])
             sete_dias_atras = hoje - timedelta(days=7)
-            df_semana = df_temp[df_temp['data_dt'].dt.date >= sete_dias_atras]
+            df_semana = df[df['data_dt'].dt.date >= sete_dias_atras]
             
             if not df_semana.empty:
                 rec_sem = df_semana[df_semana['tipo'] == 'receita']['valor'].sum()
@@ -254,26 +289,25 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 2. Cards de Métricas Principais ---
-    receitas = df[df["tipo"] == "receita"]["valor"].sum() if not df.empty else 0.0
-    despesas = df[df["tipo"] == "despesa"]["valor"].sum() if not df.empty else 0.0
-    saldo = receitas - despesas
+    # --- 2. Cards de Métricas (Calculados estritamente para o Mês Selecionado) ---
+    receitas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "receita"]["valor"].sum() if not df_mes_ativo.empty else 0.0
+    despesas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "despesa"]["valor"].sum() if not df_mes_ativo.empty else 0.0
+    saldo_mes = receitas_mes - despesas_mes
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown(f'<div class="metric-card"><div class="metric-title">Saldo Líquido</div><div class="metric-value metric-highlight">R$ {saldo:,.2f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">Saldo Líquido ({opcoes_meses.get(mes_selecionado, "")})</div><div class="metric-value metric-highlight">R$ {saldo_mes:,.2f}</div></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown(f'<div class="metric-card"><div class="metric-title">Receitas</div><div class="metric-value">R$ {receitas:,.2f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">Receitas</div><div class="metric-value">R$ {receitas_mes:,.2f}</div></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown(f'<div class="metric-card"><div class="metric-title">Gastos Totais</div><div class="metric-value">R$ {despesas:,.2f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-title">Gastos Totais</div><div class="metric-value">R$ {despesas_mes:,.2f}</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 3. Gráfico Estilo Google Ads ---
+    # --- 3. Gráfico Histórico Geral Estilo Google Ads ---
     st.markdown('<div class="chart-box"><div class="chart-pre-header">A VISÃO GERAL</div><div class="chart-header">Fluxo de caixa ao longo do tempo</div><div class="chart-sub">Personalize o intervalo e a escala de visualização.</div>', unsafe_allow_html=True)
     if not df.empty:
         df_temp = df.copy()
-        df_temp['data_dt'] = pd.to_datetime(df_temp['data'])
         col_filtro1, col_filtro2 = st.columns([2, 1.2])
         with col_filtro1:
             opcao_periodo = st.selectbox("Período de análise", ["Últimos 30 dias", "Últimos 7 dias", "Este Mês", "Todo o período", "Personalizado"], key="filtro_periodo")
@@ -318,55 +352,49 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 4. Extrato Recente e Distribuição por Categorias ---
+    # --- 4. Extrato Recente e Distribuição do Mês Selecionado ---
     col_g1, col_g2 = st.columns([1.2, 1])
     with col_g1:
-        st.subheader("Extrato Recente")
-        if not df.empty:
-            df_exibicao = df[["data", "descricao", "categoria", "tipo", "valor"]].head(5).copy()
+        st.subheader("Extrato do Mês")
+        if not df_mes_ativo.empty:
+            # Exibe as 5 transações mais recentes daquele mês
+            df_exibicao = df_mes_ativo[["data", "descricao", "categoria", "tipo", "valor"]].head(5).copy()
             df_exibicao["data"] = df_exibicao["data"].apply(formatar_data_br)
             df_exibicao.rename(columns={"data": "Data", "descricao": "Descrição", "categoria": "Categoria", "tipo": "Tipo", "valor": "Valor (R$)"}, inplace=True)
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
             if st.button("🔍 Gerenciar / Ver histórico completo"):
                 exibir_modal_historico(df)
         else:
-            st.info("Nenhuma transação cadastrada ainda.")
+            st.info("Nenhuma transação cadastrada para este mês.")
 
     with col_g2:
-        st.subheader("Distribuição por Categoria")
-        despesas_df = df[df["tipo"] == "despesa"] if not df.empty else pd.DataFrame()
-        if not despesas_df.empty:
-            fig_pizza = renderizar_grafico_pizza(despesas_df)
+        st.subheader("Categorias do Mês")
+        despesas_mes_df = df_mes_ativo[df_mes_ativo["tipo"] == "despesa"] if not df_mes_ativo.empty else pd.DataFrame()
+        if not despesas_mes_df.empty:
+            fig_pizza = renderizar_grafico_pizza(despesas_mes_df)
             st.plotly_chart(fig_pizza, use_container_width=True)
         else:
-            st.info("Sem despesas para exibir a distribuição.")
+            st.info("Sem despesas para exibir a distribuição neste mês.")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 5. ÚLTIMO QUADRANTE: Orçamento do Mês (Container Nativo Streamlit) ---
-    hoje_data = datetime.today().date()
+    # --- 5. ÚLTIMO QUADRANTE: Orçamento do Mês Selecionado ---
+    ano_sel, mes_sel = [int(v) for v in mes_selecionado.split('-')]
     
     with st.container(border=True):
         col_b_title, col_b_btn = st.columns([3.5, 1.5])
         with col_b_title:
-            st.markdown("### 🎯 Orçamento do Mês")
-            st.caption("Acompanhe o consumo dos seus tetos planejados para este mês.")
+            st.markdown(f"### 🎯 Orçamento ({opcoes_meses.get(mes_selecionado, '')})")
+            st.caption("Acompanhe o consumo dos seus tetos planejados para este mês de referência.")
         with col_b_btn:
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
             if st.button("⚙️ Ajustar Tetos", use_container_width=True):
                 exibir_modal_orcamentos(df_orc)
 
         if not df_orc.empty:
-            df_mes_atual = df.copy()
-            if not df_mes_atual.empty:
-                df_mes_atual['dt'] = pd.to_datetime(df_mes_atual['data'])
-                # Filtra estritamente pelo mês e ano atuais
-                df_mes_despesas = df_mes_atual[
-                    (df_mes_atual['dt'].dt.year == hoje_data.year) & 
-                    (df_mes_atual['dt'].dt.month == hoje_data.month) & 
-                    (df_mes_atual['tipo'] == 'despesa')
-                ]
-                gastos_categoria = df_mes_despesas.groupby('categoria')['valor'].sum().to_dict()
+            if not df_mes_ativo.empty:
+                df_despesas_orc = df_mes_ativo[df_mes_ativo['tipo'] == 'despesa']
+                gastos_categoria = df_despesas_orc.groupby('categoria')['valor'].sum().to_dict()
             else:
                 gastos_categoria = {}
 
@@ -383,7 +411,6 @@ if aba == "Visão Geral":
                 else:
                     status_emoji = "🟢"
 
-                # R\$ escapado para não conflitar com sintaxe LaTeX
                 st.write(f"**{status_emoji} {cat_nome}**: R\$ {gasto_atual:,.2f} de R\$ {teto:,.2f} ({int(percentual * 100)}%)")
                 st.progress(percentual)
         else:
