@@ -34,7 +34,7 @@ def processar_comando_texto(texto_usuario):
     
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=config
         )
