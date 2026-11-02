@@ -66,11 +66,12 @@ st.markdown("""
         background: #101c27;
         border: 1px solid #1c2e40;
         border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 20px;
+        padding: 22px;
+        margin-top: 24px;
+        margin-bottom: 24px;
     }
     .budget-header {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
         font-weight: 700;
         color: #ffffff;
         margin-bottom: 4px;
@@ -78,7 +79,7 @@ st.markdown("""
     .budget-sub {
         font-size: 0.82rem;
         color: #64748b;
-        margin-bottom: 14px;
+        margin-bottom: 16px;
     }
     
     .chart-box { background: #101c27; border: 1px solid #1c2e40; border-radius: 16px; padding: 20px; margin-top: 20px; }
@@ -190,7 +191,7 @@ if aba == "Visão Geral":
     st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- Seção de Auditoria Semanal Inteligente com Cruzamento de Orçamento ---
+    # --- 1. Auditoria Semanal Inteligente ---
     if not df.empty:
         hoje = datetime.today().date()
         semana_atual_chave = f"{hoje.year}-W{hoje.isocalendar()[1]}"
@@ -257,6 +258,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # --- 2. Cards de Métricas Principais ---
     receitas = df[df["tipo"] == "receita"]["valor"].sum() if not df.empty else 0.0
     despesas = df[df["tipo"] == "despesa"]["valor"].sum() if not df.empty else 0.0
     saldo = receitas - despesas
@@ -271,54 +273,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- Seção de Orçamento do Mês com Barras de Progresso ---
-    hoje_data = datetime.today().date()
-    primeiro_dia_mes = hoje_data.replace(day=1)
-    
-    st.markdown("""
-    <div class="budget-box">
-        <div class="budget-header">🎯 Orçamento do Mês</div>
-        <div class="budget-sub">Acompanhe o consumo dos seus tetos planejados para este mês.</div>
-    """, unsafe_allow_html=True)
-
-    col_orc_top1, col_orc_top2 = st.columns([4, 1.2])
-    with col_orc_top2:
-        if st.button("⚙️ Ajustar Tetos"):
-            exibir_modal_orcamentos(df_orc)
-
-    if not df_orc.empty:
-        # Filtra os gastos do mês corrente
-        df_mes_atual = df.copy()
-        if not df_mes_atual.empty:
-            df_mes_atual['dt'] = pd.to_datetime(df_mes_atual['data']).dt.date
-            df_mes_despesas = df_mes_atual[(df_mes_atual['dt'] >= primeiro_dia_mes) & (df_mes_atual['tipo'] == 'despesa')]
-            gastos_categoria = df_mes_despesas.groupby('categoria')['valor'].sum().to_dict()
-        else:
-            gastos_categoria = {}
-
-        for _, orc in df_orc.iterrows():
-            cat_nome = orc['categoria']
-            teto = float(orc['valor_teto'])
-            gasto_atual = float(gastos_categoria.get(cat_nome, 0.0))
-            percentual = min(gasto_atual / teto, 1.0) if teto > 0 else 0.0
-            
-            # Status e cor do progresso
-            if percentual >= 0.90:
-                status_emoji = "🔴"
-            elif percentual >= 0.70:
-                status_emoji = "🟡"
-            else:
-                status_emoji = "🟢"
-
-            st.write(f"**{status_emoji} {cat_nome}**: R$ {gasto_atual:,.2f} de R$ {teto:,.2f} ({int(percentual * 100)}%)")
-            st.progress(percentual)
-    else:
-        st.info("Nenhum teto orçado cadastrado. Clique em '⚙️ Ajustar Tetos' para planejar seus gastos.")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # Gráfico Estilo Google Ads
+    # --- 3. Gráfico Estilo Google Ads ---
     st.markdown('<div class="chart-box"><div class="chart-pre-header">A VISÃO GERAL</div><div class="chart-header">Fluxo de caixa ao longo do tempo</div><div class="chart-sub">Personalize o intervalo e a escala de visualização.</div>', unsafe_allow_html=True)
     if not df.empty:
         df_temp = df.copy()
@@ -367,6 +322,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # --- 4. Extrato Recente e Distribuição por Categorias ---
     col_g1, col_g2 = st.columns([1.2, 1])
     with col_g1:
         st.subheader("Extrato Recente")
@@ -388,6 +344,54 @@ if aba == "Visão Geral":
             st.plotly_chart(fig_pizza, use_container_width=True)
         else:
             st.info("Sem despesas para exibir a distribuição.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- 5. ÚLTIMO QUADRANTE: Orçamento do Mês com Botão Integrado ---
+    hoje_data = datetime.today().date()
+    primeiro_dia_mes = hoje_data.replace(day=1)
+    
+    with st.container():
+        st.markdown('<div class="budget-box">', unsafe_allow_html=True)
+        
+        # Cabeçalho com o botão Ajustar Tetos alinhado à direita
+        col_b_title, col_b_btn = st.columns([3.5, 1.5])
+        with col_b_title:
+            st.markdown('<div class="budget-header">🎯 Orçamento do Mês</div>', unsafe_allow_html=True)
+            st.markdown('<div class="budget-sub">Acompanhe o consumo dos seus tetos planejados para este mês.</div>', unsafe_allow_html=True)
+        with col_b_btn:
+            if st.button("⚙️ Ajustar Tetos", use_container_width=True):
+                exibir_modal_orcamentos(df_orc)
+
+        # Listagem das categorias e barras de progresso dentro do quadro
+        if not df_orc.empty:
+            df_mes_atual = df.copy()
+            if not df_mes_atual.empty:
+                df_mes_atual['dt'] = pd.to_datetime(df_mes_atual['data']).dt.date
+                df_mes_despesas = df_mes_atual[(df_mes_atual['dt'] >= primeiro_dia_mes) & (df_mes_atual['tipo'] == 'despesa')]
+                gastos_categoria = df_mes_despesas.groupby('categoria')['valor'].sum().to_dict()
+            else:
+                gastos_categoria = {}
+
+            for _, orc in df_orc.iterrows():
+                cat_nome = orc['categoria']
+                teto = float(orc['valor_teto'])
+                gasto_atual = float(gastos_categoria.get(cat_nome, 0.0))
+                percentual = min(gasto_atual / teto, 1.0) if teto > 0 else 0.0
+                
+                if percentual >= 0.90:
+                    status_emoji = "🔴"
+                elif percentual >= 0.70:
+                    status_emoji = "🟡"
+                else:
+                    status_emoji = "🟢"
+
+                st.write(f"**{status_emoji} {cat_nome}**: R$ {gasto_atual:,.2f} de R$ {teto:,.2f} ({int(percentual * 100)}%)")
+                st.progress(percentual)
+        else:
+            st.info("Nenhum teto orçado cadastrado. Clique no botão acima para planejar seus gastos.")
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ----------------- ABA 2: ESCANEAR EXTRATO COM GEMINI -----------------
 elif aba == "Escanear Extrato (IA)":
