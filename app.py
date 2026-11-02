@@ -172,7 +172,7 @@ def processar_comando_audio(audio_bytes, mime_type="audio/wav"):
 
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=[audio_part, prompt],
             config=config
         )
@@ -188,6 +188,23 @@ def processar_comando_audio(audio_bytes, mime_type="audio/wav"):
         dados = dados[0]
         
     return salvar_no_banco(dados)
+
+# Janela modal para visualizar todas as transações
+@st.dialog("Histórico Completo de Transações", width="large")
+def exibir_modal_historico(dados_completos):
+    df_modal = dados_completos[["data", "descricao", "categoria", "tipo", "metodo_pagamento", "valor"]].copy()
+    df_modal["data"] = df_modal["data"].apply(formatar_data_br)
+    df_modal.rename(columns={
+        "data": "Data",
+        "descricao": "Descrição",
+        "categoria": "Categoria",
+        "tipo": "Tipo",
+        "metodo_pagamento": "Método",
+        "valor": "Valor (R$)"
+    }, inplace=True)
+    
+    st.caption(f"Exibindo todas as {len(df_modal)} transações registradas.")
+    st.dataframe(df_modal, use_container_width=True, hide_index=True)
 
 df = carregar_transacoes()
 
@@ -270,7 +287,8 @@ if aba == "Visão Geral":
     with col_g1:
         st.subheader("Extrato Recente")
         if not df.empty:
-            df_exibicao = df[["data", "descricao", "categoria", "tipo", "valor"]].head(10).copy()
+            # Mostra apenas as 5 últimas transações na tela principal
+            df_exibicao = df[["data", "descricao", "categoria", "tipo", "valor"]].head(5).copy()
             df_exibicao["data"] = df_exibicao["data"].apply(formatar_data_br)
             df_exibicao.rename(columns={
                 "data": "Data",
@@ -285,6 +303,10 @@ if aba == "Visão Geral":
                 use_container_width=True,
                 hide_index=True
             )
+            
+            # Botão para abrir o histórico completo em pop-up
+            if st.button("🔍 Ver histórico completo"):
+                exibir_modal_historico(df)
         else:
             st.info("Nenhuma transação cadastrada ainda.")
 
@@ -371,7 +393,6 @@ elif aba == "Escanear Extrato (IA)":
                 """
                 config = types.GenerateContentConfig(response_mime_type="application/json")
 
-                # Monta a parte de conteúdo dependendo se é PDF ou Imagem
                 if is_pdf:
                     file_bytes = uploaded_file.read()
                     content_part = types.Part.from_bytes(data=file_bytes, mime_type="application/pdf")
