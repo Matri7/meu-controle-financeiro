@@ -8,7 +8,8 @@ from database import (
     atualizar_transacao, excluir_transacao,
     carregar_orcamentos, salvar_orcamento,
     obter_relatorio_semanal, salvar_relatorio_semanal,
-    carregar_diarias_uber, salvar_diaria_uber
+    carregar_diarias_uber, salvar_diaria_uber,
+    atualizar_diaria_uber, excluir_diaria_uber
 )
 from ai_service import (
     processar_comando_texto, processar_comando_audio, processar_arquivo_extrato,
@@ -424,7 +425,6 @@ elif aba == "Controle Uber":
         total_km = df_uber["km_rodados"].sum()
         total_horas = df_uber["horas_online"].sum()
         
-        # Custo operacional estimado por KM rodado
         custos_totais = (df_uber["km_rodados"] * df_uber["custo_km_padrao"]).sum() + df_uber["outros_gastos"].sum()
         lucro_liquido_real = total_bruto - custos_totais
         
@@ -471,24 +471,62 @@ elif aba == "Controle Uber":
                 st.success("Diária salva com sucesso! O valor bruto já foi somado à sua Visão Geral.")
                 st.rerun()
 
-    # Histórico de Diárias
-    st.markdown("### 📋 Histórico de Corridas")
+    # Histórico de Diárias com Edição Interativa
+    st.markdown("### 📋 Histórico e Edição de Diárias")
+    st.caption("Dê um duplo clique para alterar qualquer número ou selecione a linha para excluir.")
+    
     if not df_uber.empty:
-        df_uber_tabela = df_uber.copy()
-        df_uber_tabela["custo_estimado"] = (df_uber_tabela["km_rodados"] * df_uber_tabela["custo_km_padrao"]) + df_uber_tabela["outros_gastos"]
-        df_uber_tabela["lucro_real"] = df_uber_tabela["ganho_bruto"] - df_uber_tabela["custo_estimado"]
-        
-        df_uber_exibicao = df_uber_tabela[["data", "ganho_bruto", "km_rodados", "horas_online", "custo_estimado", "lucro_real"]].copy()
-        df_uber_exibicao["data"] = df_uber_exibicao["data"].apply(formatar_data_br)
-        df_uber_exibicao.rename(columns={
-            "data": "Data",
-            "ganho_bruto": "Bruto (R$)",
-            "km_rodados": "Km",
-            "horas_online": "Horas Online",
-            "custo_estimado": "Custo Est. (R$)",
-            "lucro_real": "Lucro Real (R$)"
-        }, inplace=True)
-        st.dataframe(df_uber_exibicao, use_container_width=True, hide_index=True)
+        df_uber_editavel = df_uber[["id", "data", "ganho_bruto", "km_rodados", "horas_online", "custo_km_padrao", "outros_gastos"]].copy()
+        df_uber_editavel["data"] = pd.to_datetime(df_uber_editavel["data"]).dt.date
+        df_uber_editavel["ganho_bruto"] = df_uber_editavel["ganho_bruto"].astype(float)
+        df_uber_editavel["km_rodados"] = df_uber_editavel["km_rodados"].astype(float)
+        df_uber_editavel["horas_online"] = df_uber_editavel["horas_online"].astype(float)
+        df_uber_editavel["custo_km_padrao"] = df_uber_editavel["custo_km_padrao"].astype(float)
+        df_uber_editavel["outros_gastos"] = df_uber_editavel["outros_gastos"].astype(float)
+
+        editor_uber = st.data_editor(
+            df_uber_editavel,
+            use_container_width=True,
+            hide_index=True,
+            num_rows="dynamic",
+            column_config={
+                "id": st.column_config.NumberColumn("ID", disabled=True),
+                "data": st.column_config.DateColumn("Data", format="DD/MM/YYYY", required=True),
+                "ganho_bruto": st.column_config.NumberColumn("Bruto (R$)", format="R$ %.2f", min_value=0.01, required=True),
+                "km_rodados": st.column_config.NumberColumn("Km", format="%.1f km", min_value=0.1, required=True),
+                "horas_online": st.column_config.NumberColumn("Horas", format="%.2f h", min_value=0.1, required=True),
+                "custo_km_padrao": st.column_config.NumberColumn("Custo/Km (R$)", format="R$ %.2f", min_value=0.01, required=True),
+                "outros_gastos": st.column_config.NumberColumn("Outros (R$)", format="R$ %.2f", min_value=0.0, required=True)
+            },
+            key="editor_diarias_uber"
+        )
+
+        col_uber_btn, _ = st.columns([2, 3])
+        with col_uber_btn:
+            if st.button("💾 Salvar Alterações nas Diárias"):
+                alteracoes_uber = st.session_state.get("editor_diarias_uber", {})
+                
+                # Exclusões
+                linhas_removidas = alteracoes_uber.get("deleted_rows", [])
+                for idx in linhas_removidas:
+                    id_remocao = int(df_uber_editavel.iloc[idx]["id"])
+                    excluir_diaria_uber(id_remocao)
+
+                # Edições
+                linhas_alteradas = alteracoes_uber.get("edited_rows", {})
+                if linhas_alteradas:
+                    for idx, campos in linhas_alteradas.items():
+                        id_edit = int(df_uber_editavel.iloc[idx]["id"])
+                        payload_edit = {}
+                        for k, v in campos.items():
+                            if k == "data":
+                                payload_edit[k] = str(v)
+                            else:
+                                payload_edit[k] = float(v)
+                        atualizar_diaria_uber(id_edit, payload_edit)
+
+                st.success("Histórico atualizado com sucesso!")
+                st.rerun()
     else:
         st.info("Nenhuma diária cadastrada ainda.")
 
