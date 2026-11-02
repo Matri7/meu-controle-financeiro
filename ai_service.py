@@ -32,15 +32,16 @@ def processar_comando_texto(texto_usuario):
     """
     config = types.GenerateContentConfig(response_mime_type="application/json")
     
+    # Prioridade 3.8 Flash, com fallback para 2.5 Flash
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-3.8-flash',
             contents=prompt,
             config=config
         )
     except Exception:
         response = gemini_client.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=config
         )
@@ -68,15 +69,16 @@ def processar_comando_audio(audio_bytes, mime_type="audio/wav"):
     config = types.GenerateContentConfig(response_mime_type="application/json")
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
 
+    # Prioridade 3.8 Flash, com fallback para 2.5 Flash
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-3.8-flash',
             contents=[audio_part, prompt],
             config=config
         )
     except Exception:
         response = gemini_client.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-2.5-flash',
             contents=[audio_part, prompt],
             config=config
         )
@@ -110,15 +112,16 @@ def processar_arquivo_extrato(arquivo_ou_img, is_pdf=False):
     else:
         payload = [arquivo_ou_img, prompt]
 
+    # Prioridade 3.8 Flash para PDF e imagens, com fallback para 2.5 Flash
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.8-flash',
             contents=payload,
             config=config
         )
     except Exception:
         response = gemini_client.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-2.5-flash',
             contents=payload,
             config=config
         )
@@ -142,6 +145,8 @@ def gerar_auditoria_semanal(dados_resumidos_txt):
     }}
     """
     config = types.GenerateContentConfig(response_mime_type="application/json")
+    
+    # Prioridade 3.8 Flash para o relatório analítico, com fallback para 2.5 Flash
     try:
         response = gemini_client.models.generate_content(
             model='gemini-3.8-flash',
@@ -150,7 +155,15 @@ def gerar_auditoria_semanal(dados_resumidos_txt):
         )
         return json.loads(response.text)
     except Exception:
-        return {
-            "resumo_curto": "Dados da semana compilados com sucesso.",
-            "analise_completa": "Não foi possível gerar a análise detalhada no momento."
-        }
+        try:
+            response = gemini_client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+                config=config
+            )
+            return json.loads(response.text)
+        except Exception:
+            return {
+                "resumo_curto": "Dados da semana compilados com sucesso.",
+                "analise_completa": "Não foi possível gerar a análise detalhada no momento."
+            }
