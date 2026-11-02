@@ -3,12 +3,16 @@ import pandas as pd
 from PIL import Image
 from datetime import datetime, timedelta
 
-# Importa a lógica dos módulos que criamos
-from database import supabase, formatar_data_br, carregar_transacoes, salvar_no_banco
-from ai_service import processar_comando_texto, processar_comando_audio, processar_arquivo_extrato
+from database import (
+    supabase, formatar_data_br, carregar_transacoes, salvar_no_banco,
+    obter_relatorio_semanal, salvar_relatorio_semanal
+)
+from ai_service import (
+    processar_comando_texto, processar_comando_audio, processar_arquivo_extrato,
+    gerar_auditoria_semanal
+)
 from charts import renderizar_grafico_fluxo, renderizar_grafico_pizza
 
-# Configuração de página Streamlit
 st.set_page_config(
     page_title="FinSmart | Controle Financeiro",
     page_icon="💳",
@@ -16,25 +20,65 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Pocketwise
+# Estilização CSS Pocketwise com Card de Insights
 st.markdown("""
 <style>
     .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
     section[data-testid="stSidebar"] { background-color: #080d13; border-right: 1px solid #162433; }
-    .metric-card { background: #101c27; border: 1px solid #1c2e40; border-radius: 16px; padding: 22px; margin-bottom: 16px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); }
+    
+    .metric-card { 
+        background: #101c27; 
+        border: 1px solid #1c2e40; 
+        border-radius: 16px; 
+        padding: 22px; 
+        margin-bottom: 16px; 
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); 
+    }
     .metric-title { color: #7b94a8; font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
     .metric-value { font-size: 1.85rem; font-weight: 700; color: #f8fafc; }
     .metric-highlight { color: #10b981; }
+    
+    /* Card de Insight da IA */
+    .insight-card {
+        background: linear-gradient(135deg, #10212f 0%, #0d1822 100%);
+        border: 1px solid #1e3a4f;
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .insight-tag {
+        color: #5eead4;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 4px;
+    }
+    .insight-text {
+        font-size: 0.95rem;
+        color: #e2e8f0;
+        line-height: 1.4;
+    }
+    
     .chart-box { background: #101c27; border: 1px solid #1c2e40; border-radius: 16px; padding: 20px; margin-top: 20px; }
     .chart-pre-header { color: #5eead4; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
     .chart-header { font-size: 1.25rem; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
     .chart-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 16px; }
-    div.stButton > button:first-child { background-color: #10b981; color: #062419; font-weight: 600; border: none; border-radius: 10px; padding: 10px 22px; transition: all 0.2s ease-in-out; }
+
+    div.stButton > button:first-child { 
+        background-color: #10b981; 
+        color: #062419; 
+        font-weight: 600; 
+        border: none; 
+        border-radius: 10px; 
+        padding: 10px 22px; 
+        transition: all 0.2s ease-in-out; 
+    }
     div.stButton > button:first-child:hover { background-color: #059669; color: #ffffff; }
 </style>
 """, unsafe_allow_html=True)
 
-# Navegação lateral
 st.sidebar.markdown("### 💳 FinSmart")
 st.sidebar.caption("Seu orçamento sob foco")
 aba = st.sidebar.radio("Navegar", ["Visão Geral", "Escanear Extrato (IA)", "Lançamento Rápido"])
@@ -47,6 +91,10 @@ def exibir_modal_historico(dados_completos):
     st.caption(f"Exibindo todas as {len(df_modal)} transações registradas.")
     st.dataframe(df_modal, use_container_width=True, hide_index=True)
 
+@st.dialog("Auditoria e Diagnóstico Semanal da IA", width="large")
+def exibir_modal_auditoria(texto_analise):
+    st.markdown(texto_analise)
+
 df = carregar_transacoes()
 
 # ----------------- ABA 1: VISÃO GERAL -----------------
@@ -54,6 +102,43 @@ if aba == "Visão Geral":
     st.markdown("## Seu dinheiro, em foco.")
     st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
     st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- Seção de Auditoria Semanal Inteligente (Cache no Supabase) ---
+    if not df.empty:
+        hoje = datetime.today().date()
+        semana_atual_chave = f"{hoje.year}-W{hoje.isocalendar()[1]}"
+        relatorio_cache = obter_relatorio_semanal(semana_atual_chave)
+
+        if not relatorio_cache:
+            # Filtra os últimos 7 dias para preparar os números resumidos
+            df_temp = df.copy()
+            df_temp['data_dt'] = pd.to_datetime(df_temp['data'])
+            sete_dias_atras = hoje - timedelta(days=7)
+            df_semana = df_temp[df_temp['data_dt'].dt.date >= sete_dias_atras]
+            
+            if not df_semana.empty:
+                rec_sem = df_semana[df_semana['tipo'] == 'receita']['valor'].sum()
+                desp_sem = df_semana[df_semana['tipo'] == 'despesa']['valor'].sum()
+                cat_top = df_semana[df_semana['tipo'] == 'despesa'].groupby('categoria')['valor'].sum().to_dict()
+                
+                resumo_texto = f"Período: Últimos 7 dias. Receitas: R$ {rec_sem:.2f}. Despesas: R$ {desp_sem:.2f}. Gastos por categoria: {cat_top}."
+                resultado_ia = gerar_auditoria_semanal(resumo_texto)
+                salvar_relatorio_semanal(semana_atual_chave, resultado_ia["resumo_curto"], resultado_ia["analise_completa"])
+                relatorio_cache = resultado_ia
+
+        if relatorio_cache:
+            col_ins_txt, col_ins_btn = st.columns([4, 1.2])
+            with col_ins_txt:
+                st.markdown(f"""
+                <div class="insight-card">
+                    <div class="insight-tag">💡 Insight Semanal da IA</div>
+                    <div class="insight-text">{relatorio_cache['resumo_curto']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_ins_btn:
+                st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+                if st.button("Ver diagnóstico completo", key="btn_ver_auditoria"):
+                    exibir_modal_auditoria(relatorio_cache['analise_completa'])
 
     with st.expander("⚡ Lançamento Rápido (Texto ou Gravar Voz)", expanded=False):
         modo_entrada = st.radio("Escolha a forma de entrada:", ["Digitar Frase", "Gravar Áudio"], horizontal=True, key="modo_vg")
