@@ -19,13 +19,13 @@ from ai_service import (
 from charts import renderizar_grafico_fluxo, renderizar_grafico_pizza
 
 st.set_page_config(
-    page_title="de bolso . | Finanças",
+    page_title="de bolso . | Cada movimento, contabilizado",
     page_icon="💳",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Cirúrgica para Forçar Alinhamento à Esquerda no Streamlit
+# Estilização CSS Cirúrgica e Fiel ao Layout "de bolso ."
 st.markdown("""
 <style>
     .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
@@ -42,7 +42,6 @@ st.markdown("""
         padding-right: 0.8rem !important;
     }
     
-    /* Remove espaçamentos e margens parasitas dos botões da sidebar */
     section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(div.stButton) {
         margin-bottom: 4px !important;
     }
@@ -53,7 +52,6 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    /* O Botão retangular */
     section[data-testid="stSidebar"] div.stButton > button {
         width: 100% !important;
         display: flex !important;
@@ -72,7 +70,6 @@ st.markdown("""
         box-sizing: border-box !important;
     }
 
-    /* QUEBRA A CENTRALIZAÇÃO NATIVA DO STREAMLIT: Força o conteúdo todo à esquerda */
     section[data-testid="stSidebar"] div.stButton > button > div,
     section[data-testid="stSidebar"] div.stButton > button div[data-testid="stMarkdownContainer"],
     section[data-testid="stSidebar"] div.stButton > button p {
@@ -88,7 +85,6 @@ st.markdown("""
         margin-right: auto !important;
     }
 
-    /* Fixa a largura e posição dos ícones para ficarem perfeitamente colunados */
     section[data-testid="stSidebar"] div.stButton > button span[data-testid="stIconMaterial"] {
         margin-right: 12px !important;
         margin-left: 0 !important;
@@ -105,7 +101,7 @@ st.markdown("""
         color: #f1f5f9 !important;
     }
     
-    /* Retângulo da Aba Ativa (Design Exato do Print com traço verde menta) */
+    /* Retângulo da Aba Ativa */
     section[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
         background-color: #101c27 !important;
         color: #ffffff !important;
@@ -152,17 +148,56 @@ st.markdown("""
         color: #e2e8f0;
         line-height: 1.4;
     }
-    
-    .chart-box { 
-        background: #101c27; 
-        border: 1px solid #1c2e40; 
-        border-radius: 16px; 
-        padding: 20px; 
-        margin-top: 20px; 
+
+    /* Item de Transação Estilo Lista Luxo (print de referência) */
+    .tx-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border-bottom: 1px solid #14202c;
+        transition: background 0.15s ease;
     }
-    .chart-pre-header { color: #5eead4; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
-    .chart-header { font-size: 1.25rem; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
-    .chart-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 16px; }
+    .tx-row:hover {
+        background: #0f1922;
+        border-radius: 12px;
+    }
+    .tx-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .tx-icon-box {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: #15222e;
+        border: 1px solid #1f3347;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+    }
+    .tx-desc {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #f8fafc;
+    }
+    .tx-meta {
+        font-size: 0.78rem;
+        color: #64748b;
+        margin-top: 2px;
+    }
+    .tx-val-despesa {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #f1f5f9;
+    }
+    .tx-val-receita {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #10b981;
+    }
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background: #101c27;
@@ -294,6 +329,17 @@ def parse_hora_automatica(texto_hora):
     hora_formatada = f"{h}:{m:02d} h"
     return hora_decimal, hora_formatada
 
+# Mapa de Ícones para Cada Categoria (Visual E-commerce / Pocketwise)
+MAPA_ICONES_CAT = {
+    "Alimentação": "🍔",
+    "Transporte": "🚗",
+    "Moradia": "🏠",
+    "Lazer": "🍿",
+    "Saúde": "💊",
+    "Serviços": "⚡",
+    "Outros": "📦"
+}
+
 # --- BARRA LATERAL ESTILO "DE BOLSO ." ---
 st.sidebar.markdown("""
 <div style="display: flex; align-items: center; gap: 12px; padding: 0 4px 22px 4px;">
@@ -317,7 +363,7 @@ st.sidebar.markdown("""
 if "aba_ativa" not in st.session_state:
     st.session_state["aba_ativa"] = "Visão Geral"
 
-# Botões com o parâmetro oficial 'icon' do Streamlit
+# Botões Oficiais da Barra Lateral com Ícones Material Design
 btn_vg = st.sidebar.button(
     "Visão geral",
     icon=":material/home:",
@@ -327,6 +373,17 @@ btn_vg = st.sidebar.button(
 )
 if btn_vg:
     st.session_state["aba_ativa"] = "Visão Geral"
+    st.rerun()
+
+btn_tx = st.sidebar.button(
+    "Transações",
+    icon=":material/sync_alt:",
+    key="nav_tx",
+    type="primary" if st.session_state["aba_ativa"] == "Transações" else "secondary",
+    use_container_width=True
+)
+if btn_tx:
+    st.session_state["aba_ativa"] = "Transações"
     st.rerun()
 
 btn_ub = st.sidebar.button(
@@ -340,26 +397,15 @@ if btn_ub:
     st.session_state["aba_ativa"] = "Controle Uber"
     st.rerun()
 
-btn_ex = st.sidebar.button(
-    "Escanear extrato (IA)",
-    icon=":material/document_scanner:",
-    key="nav_ex",
-    type="primary" if st.session_state["aba_ativa"] == "Escanear Extrato (IA)" else "secondary",
+btn_orc = st.sidebar.button(
+    "Orçamentos",
+    icon=":material/layers:",
+    key="nav_orc",
+    type="primary" if st.session_state["aba_ativa"] == "Orçamentos" else "secondary",
     use_container_width=True
 )
-if btn_ex:
-    st.session_state["aba_ativa"] = "Escanear Extrato (IA)"
-    st.rerun()
-
-btn_lr = st.sidebar.button(
-    "Lançamento rápido",
-    icon=":material/sync_alt:",
-    key="nav_lr",
-    type="primary" if st.session_state["aba_ativa"] == "Lançamento Rápido" else "secondary",
-    use_container_width=True
-)
-if btn_lr:
-    st.session_state["aba_ativa"] = "Lançamento Rápido"
+if btn_orc:
+    st.session_state["aba_ativa"] = "Orçamentos"
     st.rerun()
 
 aba = st.session_state["aba_ativa"]
@@ -371,6 +417,97 @@ MESES_PT = {
     5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
     9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
 }
+
+# --- Janela Modal de Nova Transação (Texto, Voz, Extrato ou Manual) ---
+@st.dialog("Adicionar Transação", width="large")
+def exibir_modal_adicionar_transacao():
+    st.caption("Escolha a melhor forma para registrar seu lançamento financeiro:")
+    
+    metodo_add = st.radio(
+        "Forma de entrada:",
+        ["Comando Rápido (Texto / Voz)", "Escanear Extrato (IA)", "Lançamento Manual"],
+        horizontal=True
+    )
+    
+    if metodo_add == "Comando Rápido (Texto / Voz)":
+        st.markdown("<br>", unsafe_allow_html=True)
+        sub_tipo = st.radio("Escolha:", ["Digitar Frase", "Gravar Voz"], horizontal=True, label_visibility="collapsed")
+        
+        if sub_tipo == "Digitar Frase":
+            col_t1, col_t2 = st.columns([4, 1.2])
+            with col_t1:
+                frase_dig = st.text_input("Dite ou digite:", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...")
+            with col_t2:
+                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                btn_lancar_txt = st.button("Lançar com IA")
+            
+            if btn_lancar_txt and frase_dig.strip():
+                with st.spinner("Processando..."):
+                    ok, msg = processar_comando_texto(frase_dig)
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.warning(msg)
+                        
+        elif sub_tipo == "Gravar Voz":
+            audio_gravado = st.audio_input("Grave sua mensagem de voz:")
+            if audio_gravado is not None and st.button("Processar Áudio com IA"):
+                with st.spinner("Processando áudio..."):
+                    ok, msg = processar_comando_audio(audio_gravado.read(), mime_type="audio/wav")
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.warning(msg)
+
+    elif metodo_add == "Escanear Extrato (IA)":
+        st.markdown("<br>", unsafe_allow_html=True)
+        uploaded_file = st.file_uploader("Arquivo de fatura ou extrato (PDF, PNG ou JPG)", type=["png", "jpg", "jpeg", "pdf"])
+        if uploaded_file:
+            is_pdf = uploaded_file.name.lower().endswith(".pdf")
+            if not is_pdf:
+                img_prev = Image.open(uploaded_file)
+                st.image(img_prev, width=140)
+            else:
+                st.info(f"📄 Arquivo PDF carregado: {uploaded_file.name}")
+                
+            if st.button("Analisar e Extrair Transações"):
+                with st.spinner("IA analisando linhas do documento..."):
+                    arquivo_in = uploaded_file.read() if is_pdf else img_prev
+                    try:
+                        dados = processar_arquivo_extrato(arquivo_in, is_pdf=is_pdf)
+                        itens_salvos = 0
+                        for it in dados:
+                            ok, _ = salvar_no_banco(it)
+                            if ok: itens_salvos += 1
+                        st.success(f"{itens_salvos} transação(ões) adicionada(s) com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao processar documento: {e}")
+
+    elif metodo_add == "Lançamento Manual":
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.form("form_modal_manual"):
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                desc = st.text_input("Descrição", placeholder="Ex: Farmácia, Supermercado")
+                val_manual = st.text_input("Valor (R$)", value="R$ 0,00")
+                data_m = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
+            with col_m2:
+                tipo = st.selectbox("Tipo", ["despesa", "receita"])
+                categoria = st.selectbox("Categoria", CATEGORIAS_DISPONIVEIS)
+                metodo = st.selectbox("Método", ["Pix", "Crédito", "Débito", "Dinheiro", "Boleto"])
+            
+            if st.form_submit_button("Salvar Transação"):
+                num_val = parse_moeda_automatica(val_manual)
+                if num_val <= 0:
+                    st.error("Informe um valor válido.")
+                else:
+                    payload = {"descricao": desc, "valor": num_val, "data": str(data_m), "tipo": tipo, "categoria": categoria, "metodo_pagamento": metodo}
+                    salvar_no_banco(payload)
+                    st.success("Transação salva com sucesso!")
+                    st.rerun()
 
 @st.dialog("Definir Tetos de Orçamento Mensal", width="medium")
 def exibir_modal_orcamentos(df_orcamentos_atuais):
@@ -395,7 +532,7 @@ def exibir_modal_orcamentos(df_orcamentos_atuais):
             st.success("Orçamentos salvos com sucesso!")
             st.rerun()
 
-@st.dialog("Histórico e Gerenciamento de Transações", width="large")
+@st.dialog("Gerenciar e Editar Transações", width="large")
 def exibir_modal_historico(dados_completos):
     st.caption("Pode alterar os campos diretamente nas células e carregar no botão abaixo para guardar as alterações.")
 
@@ -407,7 +544,7 @@ def exibir_modal_historico(dados_completos):
         df_editavel,
         use_container_width=True,
         hide_index=True,
-        num_rows="fixed",
+        num_rows="dynamic",
         column_config={
             "id": st.column_config.NumberColumn("ID", disabled=True),
             "data": st.column_config.DateColumn("Data", format="DD/MM/YYYY", required=True),
@@ -417,13 +554,17 @@ def exibir_modal_historico(dados_completos):
             "categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS_DISPONIVEIS, required=True),
             "metodo_pagamento": st.column_config.SelectboxColumn("Método", options=["Pix", "Crédito", "Débito", "Dinheiro", "Boleto"], required=True)
         },
-        key="editor_transacoes"
+        key="editor_transacoes_full"
     )
 
-    if st.button("💾 Guardar Alterações no Banco"):
-        alteracoes = st.session_state.get("editor_transacoes", {})
-        linhas_editadas = alteracoes.get("edited_rows", {})
+    if st.button("💾 Salvar Alterações"):
+        alteracoes = st.session_state.get("editor_transacoes_full", {})
+        linhas_removidas = alteracoes.get("deleted_rows", [])
+        for idx in linhas_removidas:
+            id_para_excluir = int(df_editavel.iloc[idx]["id"])
+            excluir_transacao(id_para_excluir)
 
+        linhas_editadas = alteracoes.get("edited_rows", {})
         if linhas_editadas:
             for idx, campos in linhas_editadas.items():
                 id_para_atualizar = int(df_editavel.iloc[idx]["id"])
@@ -437,12 +578,10 @@ def exibir_modal_historico(dados_completos):
                         dados_novos[col] = val
                 atualizar_transacao(id_para_atualizar, dados_novos)
 
-            st.success("Transações atualizadas com sucesso!")
+            st.success("Transações atualizadas!")
             st.rerun()
-        else:
-            st.info("Nenhuma alteração foi efetuada nas células.")
 
-@st.dialog("Auditoria e Diagnóstico Semanal da IA", width="large")
+@st.dialog("Auditoria Semanal da IA", width="large")
 def exibir_modal_auditoria(texto_analise):
     st.markdown(texto_analise)
 
@@ -485,7 +624,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 1. Auditoria Semanal
+    # Auditoria Semanal
     if not df.empty:
         hoje = datetime.today().date()
         semana_atual_chave = f"{hoje.year}-W{hoje.isocalendar()[1]}"
@@ -524,33 +663,9 @@ if aba == "Visão Geral":
                 if st.button("Ver diagnóstico completo", key="btn_ver_auditoria"):
                     exibir_modal_auditoria(relatorio_cache['analise_completa'])
 
-    with st.expander("⚡ Lançamento Rápido (Texto ou Gravar Voz)", expanded=False):
-        modo_entrada = st.radio("Escolha a forma de entrada:", ["Digitar Frase", "Gravar Áudio"], horizontal=True, key="modo_vg")
-        
-        if modo_entrada == "Digitar Frase":
-            col_txt, col_btn = st.columns([4, 1])
-            with col_txt:
-                frase_topo = st.text_input("Dite ou digite:", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...", key="input_frase_topo", label_visibility="collapsed")
-            with col_btn:
-                btn_topo = st.button("Lançar", key="btn_frase_topo")
-
-            if btn_topo and frase_topo.strip():
-                with st.spinner("Processando..."):
-                    ok, msg = processar_comando_texto(frase_topo)
-                    if ok: st.success(msg); st.rerun()
-                    else: st.warning(msg)
-
-        elif modo_entrada == "Gravar Áudio":
-            audio_vg = st.audio_input("Grave seu comando de voz:", key="audio_input_vg")
-            if audio_vg is not None and st.button("Processar Áudio Gravado", key="btn_proc_audio_vg"):
-                with st.spinner("Processando áudio com IA..."):
-                    ok, msg = processar_comando_audio(audio_vg.read(), mime_type="audio/wav")
-                    if ok: st.success(msg); st.rerun()
-                    else: st.warning(msg)
-
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. Cards do Mês Selecionado
+    # Cards de Totais
     receitas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "receita"]["valor"].sum() if not df_mes_ativo.empty else 0.0
     despesas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "despesa"]["valor"].sum() if not df_mes_ativo.empty else 0.0
     saldo_mes = receitas_mes - despesas_mes
@@ -565,7 +680,7 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 3. Gráfico Histórico
+    # Gráfico Histórico
     st.markdown('<div class="chart-box"><div class="chart-pre-header">A VISÃO GERAL</div><div class="chart-header">Fluxo de caixa ao longo do tempo</div><div class="chart-sub">Personalize o intervalo e a escala de visualização.</div>', unsafe_allow_html=True)
     if not df.empty:
         df_temp = df.copy()
@@ -613,7 +728,6 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 4. Extrato e Categorias
     col_g1, col_g2 = st.columns([1.2, 1])
     with col_g1:
         st.subheader("Extrato do Mês")
@@ -622,8 +736,6 @@ if aba == "Visão Geral":
             df_exibicao["data"] = df_exibicao["data"].apply(formatar_data_br)
             df_exibicao.rename(columns={"data": "Data", "descricao": "Descrição", "categoria": "Categoria", "tipo": "Tipo", "valor": "Valor (R$)"}, inplace=True)
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
-            if st.button("🔍 Gerenciar / Ver histórico completo"):
-                exibir_modal_historico(df)
         else:
             st.info("Nenhuma transação cadastrada para este mês.")
 
@@ -636,45 +748,115 @@ if aba == "Visão Geral":
         else:
             st.info("Sem despesas para exibir a distribuição neste mês.")
 
+# ----------------- ABA 2: TRANSAÇÕES (DESIGN E-COMMERCE / POCKETWISE) -----------------
+elif aba == "Transações":
+    # Inicializa limite da paginação
+    if "limite_transacoes" not in st.session_state:
+        st.session_state["limite_transacoes"] = 20
+
+    # Topo idêntico ao print
+    col_t_title, col_t_btn = st.columns([3.5, 1.5])
+    with col_t_title:
+        st.caption("• SUA SITUAÇÃO FINANCEIRA  /  MOVIMENTAÇÕES")
+        st.markdown("## Cada movimento, contabilizado.")
+        st.caption("Suas receitas e despesas, tudo em um só lugar.")
+    with col_t_btn:
+        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+        if st.button("➕ Adicionar transação", type="primary", use_container_width=True):
+            exibir_modal_adicionar_transacao()
+
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 5. Orçamento do Mês
-    with st.container(border=True):
-        col_b_title, col_b_btn = st.columns([3.5, 1.5])
-        with col_b_title:
-            st.markdown(f"### 🎯 Orçamento ({opcoes_meses.get(mes_selecionado, '')})")
-            st.caption("Acompanhe o consumo dos seus tetos planejados para este mês de referência.")
-        with col_b_btn:
-            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-            if st.button("⚙️ Ajustar Tetos", use_container_width=True):
-                exibir_modal_orcamentos(df_orc)
+    # Barra de Filtros no estilo do print (Busca + Tipo + Categoria)
+    col_f_busca, col_f_tipo, col_f_cat = st.columns([2.5, 1.2, 1.2])
+    with col_f_busca:
+        busca_termo = st.text_input("Pesquisar", placeholder="🔍 Pesquisar transações...", label_visibility="collapsed")
+    with col_f_tipo:
+        filtro_tipo = st.selectbox("Tipo", ["Todos os tipos", "Apenas Despesas", "Apenas Receitas"], label_visibility="collapsed")
+    with col_f_cat:
+        filtro_cat = st.selectbox("Categoria", ["Todas as categorias"] + CATEGORIAS_DISPONIVEIS, label_visibility="collapsed")
 
-        if not df_orc.empty:
-            if not df_mes_ativo.empty:
-                df_despesas_orc = df_mes_ativo[df_mes_ativo['tipo'] == 'despesa']
-                gastos_categoria = df_despesas_orc.groupby('categoria')['valor'].sum().to_dict()
+    # Aplicação dos Filtros
+    df_tx = df.copy()
+    if not df_tx.empty:
+        if busca_termo.strip():
+            df_tx = df_tx[df_tx["descricao"].str.contains(busca_termo.strip(), case=False, na=False)]
+        if filtro_tipo == "Apenas Despesas":
+            df_tx = df_tx[df_tx["tipo"] == "despesa"]
+        elif filtro_tipo == "Apenas Receitas":
+            df_tx = df_tx[df_tx["tipo"] == "receita"]
+        if filtro_cat != "Todas as categorias":
+            df_tx = df_tx[df_tx["categoria"] == filtro_cat]
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Subcabeçalho de Contagem de Atividades
+    total_encontradas = len(df_tx)
+    st.markdown(f"""
+    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #14202c; margin-bottom: 12px;">
+        <div style="font-size: 0.72rem; font-weight: 700; color: #52667a; text-transform: uppercase; letter-spacing: 0.1em;">
+            REGISTRO DE ATIVIDADES ({total_encontradas} Lançamentos)
+        </div>
+        <div style="font-size: 0.75rem; color: #52667a; text-transform: uppercase; letter-spacing: 0.08em;">
+            QUANTIA
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if not df_tx.empty:
+        # Fatiamento no limite atual (Inicia com 20)
+        df_exibicao = df_tx.head(st.session_state["limite_transacoes"]).copy()
+        
+        for _, row in df_exibicao.iterrows():
+            cat = row.get("categoria", "Outros")
+            icone = MAPA_ICONES_CAT.get(cat, "💳")
+            data_str = formatar_data_br(row["data"])
+            desc = row["descricao"]
+            val = float(row["valor"])
+            tipo_mov = row["tipo"]
+            metodo = row.get("metodo_pagamento", "Pix")
+
+            # Formatação monetária com sinal
+            if tipo_mov == "despesa":
+                val_formatado = f"- R$ {val:,.2f}"
+                css_val = "tx-val-despesa"
             else:
-                gastos_categoria = {}
+                val_formatado = f"+ R$ {val:,.2f}"
+                css_val = "tx-val-receita"
 
-            for _, orc in df_orc.iterrows():
-                cat_nome = orc['categoria']
-                teto = float(orc['valor_teto'])
-                gasto_atual = float(gastos_categoria.get(cat_nome, 0.0))
-                percentual = min(gasto_atual / teto, 1.0) if teto > 0 else 0.0
+            st.markdown(f"""
+            <div class="tx-row">
+                <div class="tx-left">
+                    <div class="tx-icon-box">{icone}</div>
+                    <div>
+                        <div class="tx-desc">{desc}</div>
+                        <div class="tx-meta">{cat} • {data_str} • {metodo}</div>
+                    </div>
+                </div>
+                <div class="{css_val}">{val_formatado}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Botão de Paginação E-commerce: Carregar mais 20
+        col_p1, col_p2, col_p3 = st.columns([2, 1.5, 2])
+        with col_p2:
+            if total_encontradas > st.session_state["limite_transacoes"]:
+                if st.button(f"⬇️ Carregar mais 20 transações", use_container_width=True):
+                    st.session_state["limite_transacoes"] += 20
+                    st.rerun()
+            else:
+                st.caption(f"Mostrando todas as {total_encontradas} transações.")
                 
-                if percentual >= 0.90:
-                    status_emoji = "🔴"
-                elif percentual >= 0.70:
-                    status_emoji = "🟡"
-                else:
-                    status_emoji = "🟢"
+        # Ação para gerenciar/editar linhas
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("✏️ Abrir editor de planilhas para alterações em massa"):
+            exibir_modal_historico(df)
+    else:
+        st.info("Nenhuma transação encontrada com os filtros aplicados.")
 
-                st.write(f"**{status_emoji} {cat_nome}**: R\$ {gasto_atual:,.2f} de R\$ {teto:,.2f} ({int(percentual * 100)}%)")
-                st.progress(percentual)
-        else:
-            st.info("Nenhum teto orçado cadastrado. Clique em '⚙️ Ajustar Tetos' para planejar seus gastos.")
-
-# ----------------- ABA 2: CONTROLE UBER (RENDA EXTRA) -----------------
+# ----------------- ABA 3: CONTROLE UBER (RENDA EXTRA) -----------------
 elif aba == "Controle Uber":
     st.markdown("## 🚗 Painel de Desempenho Uber")
     st.caption("Acompanhe sua renda líquida real, eficiência por km e produtividade por hora.")
@@ -801,133 +983,50 @@ elif aba == "Controle Uber":
     else:
         st.info("Nenhuma diária cadastrada ainda.")
 
-# ----------------- ABA 3: ESCANEAR EXTRATO COM GEMINI -----------------
-elif aba == "Escanear Extrato (IA)":
-    st.subheader("Leitor Inteligente de Extratos (PDF e Imagens)")
-    st.caption("Suba o extrato bancário em PDF do mês ou prints de faturas/comprovantes.")
+# ----------------- ABA 4: ORÇAMENTOS -----------------
+elif aba == "Orçamentos":
+    st.markdown("## 🎯 Tetos de Orçamento Mensal")
+    st.caption("Acompanhe o limite e o consumo planejado para cada categoria de despesa.")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    if "mensagem_status" in st.session_state and st.session_state["mensagem_status"]:
-        tipo_msg = st.session_state["mensagem_status"]["tipo"]
-        texto_msg = st.session_state["mensagem_status"]["texto"]
-        if tipo_msg == "warning": st.warning(texto_msg)
-        elif tipo_msg == "success": st.success(texto_msg)
-        elif tipo_msg == "info": st.info(texto_msg)
-        if st.button("Fechar aviso"):
-            st.session_state["mensagem_status"] = None
-            st.rerun()
+    hoje_data = datetime.today().date()
+    primeiro_dia_mes = hoje_data.replace(day=1)
 
-    if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = 0
+    with st.container(border=True):
+        col_o_title, col_o_btn = st.columns([3.5, 1.5])
+        with col_o_title:
+            st.markdown("### Limites do Mês Atual")
+            st.caption("Ajuste as metas de gastos para equilibrar suas finanças.")
+        with col_o_btn:
+            if st.button("⚙️ Configurar Tetos", use_container_width=True):
+                exibir_modal_orcamentos(df_orc)
 
-    uploaded_file = st.file_uploader("Escolha o arquivo (PDF, PNG ou JPG)", type=["png", "jpg", "jpeg", "pdf"], key=f"uploader_{st.session_state['uploader_key']}")
-
-    if uploaded_file:
-        st.session_state["mensagem_status"] = None
-        is_pdf = uploaded_file.name.lower().endswith(".pdf")
-        
-        if not is_pdf:
-            img = Image.open(uploaded_file)
-            col_img, col_info = st.columns([1, 4])
-            with col_img: st.image(img, caption="Miniatura", width=110)
-            with col_info:
-                with st.expander("🔍 Clique aqui para ver a imagem ampliada"):
-                    st.image(img, use_container_width=True)
-        else:
-            st.info(f"📄 Documento PDF carregado: **{uploaded_file.name}** ({uploaded_file.size / 1024:.1f} KB)")
-
-        if st.button("Lançar transação"):
-            with st.spinner("Analisando extrato com IA... Aguarde alguns instantes."):
-                arquivo_entrada = uploaded_file.read() if is_pdf else img
-                try:
-                    dados = processar_arquivo_extrato(arquivo_entrada, is_pdf=is_pdf)
-                    st.session_state["dados_extraidos"] = dados
-                    st.toast("Leitura concluída com sucesso!", icon="✅")
-                except Exception as e:
-                    st.error(f"Erro ao interpretar dados da IA: {e}")
-
-    if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]:
-        st.markdown("---")
-        st.markdown(f"### 📋 Prévia: {len(st.session_state['dados_extraidos'])} Transações Identificadas")
-        df_previa = pd.DataFrame(st.session_state["dados_extraidos"]).copy()
-        df_previa_exibicao = df_previa.copy()
-        df_previa_exibicao["data"] = df_previa_exibicao["data"].apply(formatar_data_br)
-        df_previa_exibicao.rename(columns={"data": "Data", "descricao": "Descrição", "categoria": "Categoria", "tipo": "Tipo", "valor": "Valor (R$)", "metodo_pagamento": "Método"}, inplace=True)
-        st.dataframe(df_previa_exibicao, use_container_width=True, hide_index=True)
-
-        col_c1, col_c2 = st.columns([1, 4])
-        with col_c1:
-            if st.button("Confirmar e Salvar"):
-                itens_salvos, itens_duplicados = 0, 0
-                for item in st.session_state["dados_extraidos"]:
-                    ok, _ = salvar_no_banco(item)
-                    if ok: itens_salvos += 1
-                    else: itens_duplicados += 1
-
-                if itens_salvos > 0 and itens_duplicados == 0:
-                    st.session_state["mensagem_status"] = {"tipo": "success", "texto": f"✅ Sucesso! {itens_salvos} transação(ões) salva(s) no banco de dados."}
-                elif itens_salvos > 0 and itens_duplicados > 0:
-                    st.session_state["mensagem_status"] = {"tipo": "warning", "texto": f"⚠️ {itens_salvos} transação(ões) nova(s) salva(s), e {itens_duplicados} lançamento(s) ignorados por duplicidade."}
-                elif itens_duplicados > 0 and itens_salvos == 0:
-                    st.session_state["mensagem_status"] = {"tipo": "warning", "texto": f"⚠️ Nenhum item novo: todas as {itens_duplicados} transações já constavam no banco de dados."}
-
-                st.session_state["dados_extraidos"] = []
-                st.session_state["uploader_key"] += 1
-                st.rerun()
-
-        with col_c2:
-            if st.button("Descartar Leitura"):
-                st.session_state["dados_extraidos"] = []
-                st.session_state["uploader_key"] += 1
-                st.session_state["mensagem_status"] = {"tipo": "info", "texto": "ℹ️ Leitura descartada sem salvar nenhuma alteração."}
-                st.rerun()
-
-# ----------------- ABA 4: LANÇAMENTO RÁPIDO -----------------
-elif aba == "Lançamento Rápido":
-    st.subheader("Novo Lançamento")
-    st.markdown("#### 🎙️ Entrada Inteligente com IA")
-    opcao_aba3 = st.radio("Método de entrada:", ["Digitar Texto", "Gravar Áudio"], horizontal=True, key="modo_aba3")
-
-    if opcao_aba3 == "Digitar Texto":
-        col_l1, col_l2 = st.columns([4, 1])
-        with col_l1:
-            frase_manual = st.text_input("Texto livre:", placeholder="Ex: Gastei 25 reais no almoço no crédito...", key="input_frase_aba3")
-        with col_l2:
-            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            btn_manual = st.button("Lançar com IA", key="btn_frase_aba3")
-
-        if btn_manual and frase_manual.strip():
-            with st.spinner("Processando..."):
-                ok, msg = processar_comando_texto(frase_manual)
-                if ok: st.success(msg); st.rerun()
-                else: st.warning(msg)
-
-    elif opcao_aba3 == "Gravar Áudio":
-        audio_aba3 = st.audio_input("Grave sua mensagem de voz:", key="audio_input_aba3")
-        if audio_aba3 is not None and st.button("Processar Áudio", key="btn_proc_audio_aba3"):
-            with st.spinner("Processando áudio com IA..."):
-                ok, msg = processar_comando_audio(audio_aba3.read(), mime_type="audio/wav")
-                if ok: st.success(msg); st.rerun()
-                else: st.warning(msg)
-
-    st.markdown("---")
-    st.markdown("#### 📝 Lançamento Manual Estruturado")
-    with st.form("form_transacao"):
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            desc = st.text_input("Descrição (Ex: Padaria, Salário)")
-            valor_manual_txt = st.text_input("Valor (R$)", value="R$ 0,00")
-            data_t = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
-        with col_f2:
-            tipo = st.selectbox("Tipo", ["despesa", "receita"])
-            categoria = st.selectbox("Categoria", ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"])
-            metodo = st.selectbox("Método de Pagamento", ["Pix", "Crédito", "Débito", "Dinheiro"])
-        
-        submit = st.form_submit_button("Salvar Manualmente")
-        if submit:
-            valor_num = parse_moeda_automatica(valor_manual_txt)
-            if valor_num <= 0:
-                st.error("Informe um valor numérico válido.")
+        if not df_orc.empty:
+            df_mes_atual = df.copy()
+            if not df_mes_atual.empty:
+                df_mes_atual['dt'] = pd.to_datetime(df_mes_atual['data']).dt.date
+                df_mes_despesas = df_mes_atual[
+                    (df_mes_atual['dt'] >= primeiro_dia_mes) & 
+                    (df_mes_atual['tipo'] == 'despesa')
+                ]
+                gastos_categoria = df_mes_despesas.groupby('categoria')['valor'].sum().to_dict()
             else:
-                payload = {"descricao": desc, "valor": valor_num, "data": str(data_t), "tipo": tipo, "categoria": categoria, "metodo_pagamento": metodo}
-                supabase.table("transacoes").insert(payload).execute()
-                st.success(f"Transação salva: R$ {valor_num:,.2f}")
-                st.rerun()
+                gastos_categoria = {}
+
+            for _, orc in df_orc.iterrows():
+                cat_nome = orc['categoria']
+                teto = float(orc['valor_teto'])
+                gasto_atual = float(gastos_categoria.get(cat_nome, 0.0))
+                percentual = min(gasto_atual / teto, 1.0) if teto > 0 else 0.0
+                
+                if percentual >= 0.90:
+                    status_emoji = "🔴"
+                elif percentual >= 0.70:
+                    status_emoji = "🟡"
+                else:
+                    status_emoji = "🟢"
+
+                st.write(f"**{status_emoji} {cat_nome}**: R\$ {gasto_atual:,.2f} de R\$ {teto:,.2f} ({int(percentual * 100)}%)")
+                st.progress(percentual)
+        else:
+            st.info("Nenhum orçamento cadastrado. Clique no botão acima para definir seus tetos.")
