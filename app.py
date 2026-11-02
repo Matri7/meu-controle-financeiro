@@ -19,71 +19,62 @@ from ai_service import (
 from charts import renderizar_grafico_fluxo, renderizar_grafico_pizza
 
 st.set_page_config(
-    page_title="de bolso . | Finanças Pessoais",
+    page_title="de bolso . | Finanças",
     page_icon="💳",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Minimalista Dark + Pocketwise Navigation
+# Estilização CSS Pocketwise Fiel ao Design
 st.markdown("""
 <style>
-    .stApp { background-color: #0d131a; color: #f1f5f9; font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
     
-    /* Sidebar Styling */
+    /* Barra lateral */
     section[data-testid="stSidebar"] {
-        background-color: #090e15 !important;
-        border-right: 1px solid #141c26 !important;
-        padding-top: 1.2rem;
+        background-color: #080d13 !important;
+        border-right: 1px solid #141f2b !important;
+        padding-top: 1.5rem !important;
     }
     
-    /* Esconde a bolinha de rádio nativa do Streamlit */
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {
-        display: none !important;
-    }
-    
-    /* Estilo dos itens de menu na barra lateral */
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label {
+    /* Botões da Sidebar transformados em Abas Retangulares */
+    section[data-testid="stSidebar"] div.stButton > button {
+        width: 100% !important;
         display: flex !important;
+        justify-content: flex-start !important;
         align-items: center !important;
-        padding: 12px 16px !important;
-        margin-bottom: 6px !important;
-        border-radius: 10px !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
+        text-align: left !important;
         background-color: transparent !important;
-        border: 1px solid transparent !important;
-    }
-    
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
-        background-color: rgba(255, 255, 255, 0.03) !important;
-    }
-    
-    /* Item Selecionado (Active State com traço lateral verde menta) */
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
-        background-color: #111a24 !important;
-        border: 1px solid #1a2a38 !important;
-        border-left: 4px solid #34d399 !important;
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Textos do menu */
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label p {
-        font-size: 0.95rem !important;
         color: #94a3b8 !important;
-        margin: 0 !important;
+        border: 1px solid transparent !important;
+        border-radius: 12px !important;
+        padding: 12px 14px !important;
+        font-size: 0.92rem !important;
+        font-weight: 500 !important;
+        margin-bottom: 4px !important;
+        transition: all 0.15s ease-in-out !important;
     }
     
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p {
-        color: #f8fafc !important;
+    section[data-testid="stSidebar"] div.stButton > button:hover {
+        background-color: rgba(255, 255, 255, 0.04) !important;
+        color: #f1f5f9 !important;
+    }
+    
+    /* Retângulo da Aba Ativa (Igual ao Print) */
+    section[data-testid="stSidebar"] div.stButton > button[kind="primary"],
+    section[data-testid="stSidebar"] div.stButton > button.nav-active {
+        background-color: #101c27 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        border: 1px solid #1c2e40 !important;
+        border-left: 3.5px solid #2dd4bf !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
     }
 
-    /* Cards e Containers */
+    /* Cards e Métricas */
     .metric-card { 
-        background: #111a24; 
-        border: 1px solid #1a2a38; 
+        background: #101c27; 
+        border: 1px solid #1c2e40; 
         border-radius: 16px; 
         padding: 22px; 
         margin-bottom: 16px; 
@@ -116,8 +107,8 @@ st.markdown("""
     }
     
     .chart-box { 
-        background: #111a24; 
-        border: 1px solid #1a2a38; 
+        background: #101c27; 
+        border: 1px solid #1c2e40; 
         border-radius: 16px; 
         padding: 20px; 
         margin-top: 20px; 
@@ -127,15 +118,15 @@ st.markdown("""
     .chart-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 16px; }
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        background: #111a24;
-        border: 1px solid #1a2a38 !important;
+        background: #101c27;
+        border: 1px solid #1c2e40 !important;
         border-radius: 16px !important;
         padding: 18px !important;
         margin-top: 16px;
         margin-bottom: 20px;
     }
 
-    div.stButton > button:first-child { 
+    div.main div.stButton > button:first-child { 
         background-color: #10b981; 
         color: #062419; 
         font-weight: 600; 
@@ -144,7 +135,7 @@ st.markdown("""
         padding: 10px 22px; 
         transition: all 0.2s ease-in-out; 
     }
-    div.stButton > button:first-child:hover { background-color: #059669; color: #ffffff; }
+    div.main div.stButton > button:first-child:hover { background-color: #059669; color: #ffffff; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -256,9 +247,9 @@ def parse_hora_automatica(texto_hora):
     hora_formatada = f"{h}:{m:02d} h"
     return hora_decimal, hora_formatada
 
-# --- Cabeçalho e Logo "de bolso ." Customizados na Barra Lateral ---
+# --- BARRA LATERAL ESTILO "DE BOLSO ." ---
 st.sidebar.markdown("""
-<div style="display: flex; align-items: center; gap: 14px; padding: 6px 4px 24px 4px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 4px 6px 20px 6px;">
     <div style="background: rgba(45, 212, 191, 0.08); border: 1.5px solid rgba(45, 212, 191, 0.4); border-radius: 12px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"></path>
@@ -271,19 +262,56 @@ st.sidebar.markdown("""
     </div>
 </div>
 
-<div style="font-size: 0.68rem; font-weight: 700; color: #52667a; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; padding-left: 6px;">
+<div style="font-size: 0.68rem; font-weight: 700; color: #52667a; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; padding-left: 6px;">
     Espaço de trabalho
 </div>
 """, unsafe_allow_html=True)
 
-# Opções de Menu com Formatação Minimalista
-opcoes_menu = ["Visão Geral", "Controle Uber", "Escanear Extrato (IA)", "Lançamento Rápido"]
+if "aba_ativa" not in st.session_state:
+    st.session_state["aba_ativa"] = "Visão Geral"
 
-aba = st.sidebar.radio(
-    label="Navegação",
-    options=opcoes_menu,
-    label_visibility="collapsed"
+# Botões de Navegação Retangulares com Ícones Minimalistas
+btn_vg = st.sidebar.button(
+    "🏠   Visão Geral",
+    key="nav_vg",
+    type="primary" if st.session_state["aba_ativa"] == "Visão Geral" else "secondary",
+    use_container_width=True
 )
+if btn_vg:
+    st.session_state["aba_ativa"] = "Visão Geral"
+    st.rerun()
+
+btn_ub = st.sidebar.button(
+    "🚗   Controle Uber",
+    key="nav_ub",
+    type="primary" if st.session_state["aba_ativa"] == "Controle Uber" else "secondary",
+    use_container_width=True
+)
+if btn_ub:
+    st.session_state["aba_ativa"] = "Controle Uber"
+    st.rerun()
+
+btn_ex = st.sidebar.button(
+    "📄   Escanear Extrato (IA)",
+    key="nav_ex",
+    type="primary" if st.session_state["aba_ativa"] == "Escanear Extrato (IA)" else "secondary",
+    use_container_width=True
+)
+if btn_ex:
+    st.session_state["aba_ativa"] = "Escanear Extrato (IA)"
+    st.rerun()
+
+btn_lr = st.sidebar.button(
+    "⚡   Lançamento Rápido",
+    key="nav_lr",
+    type="primary" if st.session_state["aba_ativa"] == "Lançamento Rápido" else "secondary",
+    use_container_width=True
+)
+if btn_lr:
+    st.session_state["aba_ativa"] = "Lançamento Rápido"
+    st.rerun()
+
+aba = st.session_state["aba_ativa"]
 
 CATEGORIAS_DISPONIVEIS = ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"]
 
