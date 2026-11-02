@@ -7,7 +7,7 @@ from google import genai
 from google.genai import types
 from PIL import Image
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Configuração de página Streamlit
 st.set_page_config(
@@ -78,7 +78,7 @@ st.markdown("""
     .chart-sub {
         font-size: 0.85rem;
         color: #64748b;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
     }
 
     div.stButton > button:first-child {
@@ -165,7 +165,7 @@ def processar_comando_texto(texto_usuario):
     
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt,
             config=config
         )
@@ -310,98 +310,156 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- Seção do Gráfico de Fluxo de Caixa ---
+    # --- Seção do Gráfico Estilo Google Ads com Filtros de Período e Granularidade ---
     st.markdown("""
     <div class="chart-box">
         <div class="chart-pre-header">A VISÃO GERAL</div>
         <div class="chart-header">Fluxo de caixa ao longo do tempo</div>
-        <div class="chart-sub">Entrada e saída de dinheiro mês a mês.</div>
+        <div class="chart-sub">Personalize o intervalo e a escala de visualização.</div>
     """, unsafe_allow_html=True)
 
     if not df.empty:
         df_temp = df.copy()
         df_temp['data_dt'] = pd.to_datetime(df_temp['data'])
-        df_temp['mes_ano'] = df_temp['data_dt'].dt.to_period('M')
 
-        df_fluxo = df_temp.groupby(['mes_ano', 'tipo'])['valor'].sum().unstack(fill_value=0).reset_index()
-        df_fluxo = df_fluxo.sort_values('mes_ano')
+        # Barra de Controles Estilo Google Ads
+        col_filtro1, col_filtro2 = st.columns([2, 1.2])
         
-        if 'receita' not in df_fluxo.columns:
-            df_fluxo['receita'] = 0.0
-        if 'despesa' not in df_fluxo.columns:
-            df_fluxo['despesa'] = 0.0
-
-        # Linha corrigida e fechada corretamente
-        meses_rotulo = [d.strftime('%b') for d in df_fluxo['mes_ano'].dt.to_timestamp()]
-
-        fig_fluxo = go.Figure()
-
-        # Linha e área de Renda (Verde Ciano Suave)
-        fig_fluxo.add_trace(go.Scatter(
-            x=meses_rotulo,
-            y=df_fluxo['receita'],
-            name='Renda',
-            mode='lines+markers',
-            line=dict(color='#5eead4', width=3, shape='spline'),
-            fill='tozeroy',
-            fillcolor='rgba(94, 234, 212, 0.07)',
-            marker=dict(size=7, color='#5eead4', line=dict(color='#0f172a', width=2)),
-            hovertemplate="<b>Renda:</b> R$ %{y:,.2f}<extra></extra>"
-        ))
-
-        # Linha e área de Despesas (Lilás / Roxo Suave)
-        fig_fluxo.add_trace(go.Scatter(
-            x=meses_rotulo,
-            y=df_fluxo['despesa'],
-            name='Despesas',
-            mode='lines+markers',
-            line=dict(color='#a78bfa', width=3, shape='spline'),
-            fill='tozeroy',
-            fillcolor='rgba(167, 139, 250, 0.07)',
-            marker=dict(size=7, color='#a78bfa', line=dict(color='#0f172a', width=2)),
-            hovertemplate="<b>Despesas:</b> R$ %{y:,.2f}<extra></extra>"
-        ))
-
-        fig_fluxo.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#94a3b8', family='Inter, sans-serif'),
-            margin=dict(t=15, b=25, l=15, r=15),
-            hovermode='x unified',
-            hoverlabel=dict(
-                bgcolor='#0f172a',
-                font_size=12,
-                font_color='#f8fafc',
-                bordercolor='#334155'
-            ),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                font=dict(size=12, color='#cbd5e1')
-            ),
-            xaxis=dict(
-                showgrid=False,
-                zeroline=False,
-                showline=False,
-                tickfont=dict(color='#64748b', size=12)
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='#1e293b',
-                gridwidth=1,
-                zeroline=False,
-                showline=False,
-                tickprefix='R$ ',
-                tickfont=dict(color='#64748b', size=11)
+        with col_filtro1:
+            opcao_periodo = st.selectbox(
+                "Período de análise",
+                ["Últimos 30 dias", "Últimos 7 dias", "Este Mês", "Todo o período", "Personalizado"],
+                key="filtro_periodo"
             )
-        )
+        
+        with col_filtro2:
+            granularidade = st.selectbox(
+                "Intervalo (Escala)",
+                ["Dia", "Semana", "Mês"],
+                index=0,
+                key="filtro_granularidade"
+            )
 
-        st.plotly_chart(fig_fluxo, use_container_width=True, config={'displayModeBar': False})
+        # Definição dos limites de datas com base no seletor
+        hoje = datetime.today().date()
+        if opcao_periodo == "Últimos 7 dias":
+            data_inicio = hoje - timedelta(days=7)
+            data_fim = hoje
+        elif opcao_periodo == "Últimos 30 dias":
+            data_inicio = hoje - timedelta(days=30)
+            data_fim = hoje
+        elif opcao_periodo == "Este Mês":
+            data_inicio = hoje.replace(day=1)
+            data_fim = hoje
+        elif opcao_periodo == "Todo o período":
+            data_inicio = df_temp['data_dt'].min().date()
+            data_fim = df_temp['data_dt'].max().date()
+        else:
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                data_inicio = st.date_input("Início", hoje - timedelta(days=30), format="DD/MM/YYYY")
+            with col_d2:
+                data_fim = st.date_input("Fim", hoje, format="DD/MM/YYYY")
+
+        # Filtra o DataFrame para o período selecionado
+        df_filtrado = df_temp[(df_temp['data_dt'].dt.date >= data_inicio) & (df_temp['data_dt'].dt.date <= data_fim)].copy()
+
+        if not df_filtrado.empty:
+            # Aplicação da Granularidade
+            if granularidade == "Dia":
+                df_filtrado['periodo_agrupado'] = df_filtrado['data_dt'].dt.strftime('%Y-%m-%d')
+                formato_rotulo = '%d/%m'
+            elif granularidade == "Semana":
+                df_filtrado['periodo_agrupado'] = df_filtrado['data_dt'].dt.to_period('W').apply(lambda r: r.start_time.strftime('%Y-%m-%d'))
+                formato_rotulo = 'Sem %d/%m'
+            else: # Mês
+                df_filtrado['periodo_agrupado'] = df_filtrado['data_dt'].dt.strftime('%Y-%m')
+                formato_rotulo = '%b/%y'
+
+            df_fluxo = df_filtrado.groupby(['periodo_agrupado', 'tipo'])['valor'].sum().unstack(fill_value=0).reset_index()
+            df_fluxo = df_fluxo.sort_values('periodo_agrupado')
+
+            if 'receita' not in df_fluxo.columns:
+                df_fluxo['receita'] = 0.0
+            if 'despesa' not in df_fluxo.columns:
+                df_fluxo['despesa'] = 0.0
+
+            # Formatação dos rótulos do eixo X
+            if granularidade == "Mês":
+                rotulos_x = [datetime.strptime(p, '%Y-%m').strftime(formato_rotulo) for p in df_fluxo['periodo_agrupado']]
+            else:
+                rotulos_x = [datetime.strptime(p, '%Y-%m-%d').strftime(formato_rotulo) for p in df_fluxo['periodo_agrupado']]
+
+            fig_fluxo = go.Figure()
+
+            # Linha e área de Renda (Verde Ciano Suave)
+            fig_fluxo.add_trace(go.Scatter(
+                x=rotulos_x,
+                y=df_fluxo['receita'],
+                name='Renda',
+                mode='lines+markers',
+                line=dict(color='#5eead4', width=3, shape='spline'),
+                fill='tozeroy',
+                fillcolor='rgba(94, 234, 212, 0.07)',
+                marker=dict(size=6, color='#5eead4', line=dict(color='#0f172a', width=2)),
+                hovertemplate="<b>Renda:</b> R$ %{y:,.2f}<extra></extra>"
+            ))
+
+            # Linha e área de Despesas (Lilás / Roxo Suave)
+            fig_fluxo.add_trace(go.Scatter(
+                x=rotulos_x,
+                y=df_fluxo['despesa'],
+                name='Despesas',
+                mode='lines+markers',
+                line=dict(color='#a78bfa', width=3, shape='spline'),
+                fill='tozeroy',
+                fillcolor='rgba(167, 139, 250, 0.07)',
+                marker=dict(size=6, color='#a78bfa', line=dict(color='#0f172a', width=2)),
+                hovertemplate="<b>Despesas:</b> R$ %{y:,.2f}<extra></extra>"
+            ))
+
+            fig_fluxo.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#94a3b8', family='Inter, sans-serif'),
+                margin=dict(t=15, b=25, l=15, r=15),
+                hovermode='x unified',
+                hoverlabel=dict(
+                    bgcolor='#0f172a',
+                    font_size=12,
+                    font_color='#f8fafc',
+                    bordercolor='#334155'
+                ),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                    font=dict(size=12, color='#cbd5e1')
+                ),
+                xaxis=dict(
+                    showgrid=False,
+                    zeroline=False,
+                    showline=False,
+                    tickfont=dict(color='#64748b', size=11)
+                ),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor='#1e293b',
+                    gridwidth=1,
+                    zeroline=False,
+                    showline=False,
+                    tickprefix='R$ ',
+                    tickfont=dict(color='#64748b', size=11)
+                )
+            )
+
+            st.plotly_chart(fig_fluxo, use_container_width=True, config={'displayModeBar': False})
+        else:
+            st.info("Nenhuma transação registrada no período selecionado.")
     else:
-        st.info("Insira lançamentos para visualizar a evolução mensal.")
+        st.info("Insira lançamentos para visualizar o gráfico.")
 
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
