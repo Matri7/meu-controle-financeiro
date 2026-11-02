@@ -19,20 +19,15 @@ st.set_page_config(
 # Estilização CSS inspirada no layout Pocketwise
 st.markdown("""
 <style>
-    /* Fundo geral e fontes */
     .stApp {
         background-color: #0b1118;
         color: #f1f5f9;
         font-family: 'Inter', sans-serif;
     }
-    
-    /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: #080d13;
         border-right: 1px solid #162433;
     }
-    
-    /* Cards métricos customizados */
     .metric-card {
         background: #101c27;
         border: 1px solid #1c2e40;
@@ -56,8 +51,6 @@ st.markdown("""
     .metric-highlight {
         color: #10b981;
     }
-    
-    /* Botões */
     div.stButton > button:first-child {
         background-color: #10b981;
         color: #062419;
@@ -178,7 +171,7 @@ def processar_comando_audio(audio_bytes, mime_type="audio/wav"):
 
     try:
         response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=[audio_part, prompt],
             config=config
         )
@@ -316,10 +309,10 @@ if aba == "Visão Geral":
         else:
             st.info("Sem despesas para exibir o gráfico.")
 
-# ----------------- ABA 2: ESCANEAR EXTRATO COM GEMINI -----------------
+# ----------------- ABA 2: ESCANEAR EXTRATO COM GEMINI (IMAGEM OU PDF) -----------------
 elif aba == "Escanear Extrato (IA)":
-    st.subheader("Leitor Inteligente de Extratos e Prints")
-    st.caption("Suba o print de uma fatura, extrato bancário ou comprovante Pix.")
+    st.subheader("Leitor Inteligente de Extratos (PDF e Imagens)")
+    st.caption("Suba o extrato bancário em PDF do mês ou prints de faturas/comprovantes.")
 
     if "mensagem_status" in st.session_state and st.session_state["mensagem_status"]:
         tipo_msg = st.session_state["mensagem_status"]["tipo"]
@@ -339,27 +332,34 @@ elif aba == "Escanear Extrato (IA)":
         st.session_state["uploader_key"] = 0
 
     uploaded_file = st.file_uploader(
-        "Escolha a imagem", 
-        type=["png", "jpg", "jpeg"],
+        "Escolha o arquivo (PDF, PNG ou JPG)", 
+        type=["png", "jpg", "jpeg", "pdf"],
         key=f"uploader_{st.session_state['uploader_key']}"
     )
 
     if uploaded_file:
         st.session_state["mensagem_status"] = None
-        img = Image.open(uploaded_file)
+        is_pdf = uploaded_file.name.lower().endswith(".pdf")
         
-        col_img, col_info = st.columns([1, 4])
-        with col_img:
-            st.image(img, caption="Miniatura", width=110)
-        with col_info:
-            with st.expander("🔍 Clique aqui para ver a imagem ampliada"):
-                st.image(img, use_container_width=True)
+        if not is_pdf:
+            img = Image.open(uploaded_file)
+            col_img, col_info = st.columns([1, 4])
+            with col_img:
+                st.image(img, caption="Miniatura", width=110)
+            with col_info:
+                with st.expander("🔍 Clique aqui para ver a imagem ampliada"):
+                    st.image(img, use_container_width=True)
+        else:
+            st.info(f"📄 Documento PDF carregado: **{uploaded_file.name}** ({uploaded_file.size / 1024:.1f} KB)")
 
         if st.button("Lançar transação"):
-            with st.spinner("Lendo comprovante com IA..."):
+            with st.spinner("Analisando extrato completo com IA... Aguarde alguns instantes."):
                 prompt = """
-                Analise esta imagem de extrato bancário, fatura ou comprovante financeiro.
-                Extraia todos os lançamentos financeiros visíveis e responda OBRIGATORIAMENTE em formato JSON com uma lista de objetos.
+                Analise este arquivo de extrato bancário, fatura ou comprovante financeiro.
+                Extraia TODOS os lançamentos financeiros individuais visíveis e responda OBRIGATORIAMENTE em formato JSON com uma lista de objetos.
+                
+                IGNORE linhas que sejam apenas: saldos do dia, saldo anterior, juros de cheque especial, cabeçalhos, telefones de SAC ou totais de página.
+                
                 Cada objeto deve conter:
                 - data: no formato AAAA-MM-DD (se não houver ano legível, use o ano atual).
                 - descricao: nome do recebedor, estabelecimento ou operação.
@@ -370,16 +370,24 @@ elif aba == "Escanear Extrato (IA)":
                 """
                 config = types.GenerateContentConfig(response_mime_type="application/json")
 
+                # Monta a parte de conteúdo dependendo se é PDF ou Imagem
+                if is_pdf:
+                    file_bytes = uploaded_file.read()
+                    content_part = types.Part.from_bytes(data=file_bytes, mime_type="application/pdf")
+                    contents_payload = [content_part, prompt]
+                else:
+                    contents_payload = [img, prompt]
+
                 try:
                     response = gemini_client.models.generate_content(
                         model='gemini-2.0-flash',
-                        contents=[img, prompt],
+                        contents=contents_payload,
                         config=config
                     )
                 except Exception:
                     response = gemini_client.models.generate_content(
                         model='gemini-3.8-flash',
-                        contents=[img, prompt],
+                        contents=contents_payload,
                         config=config
                     )
 
@@ -394,8 +402,8 @@ elif aba == "Escanear Extrato (IA)":
 
     if "dados_extraidos" in st.session_state and st.session_state["dados_extraidos"]:
         st.markdown("---")
-        st.markdown("### 📋 Prévia das Transações Identificadas")
-        st.caption("Confira as informações antes de salvar definitivamente no seu banco de dados.")
+        st.markdown(f"### 📋 Prévia: {len(st.session_state['dados_extraidos'])} Transações Identificadas")
+        st.caption("Confira os lançamentos identificados antes de gravar no Supabase.")
 
         df_previa = pd.DataFrame(st.session_state["dados_extraidos"]).copy()
         df_previa_exibicao = df_previa.copy()
@@ -438,12 +446,12 @@ elif aba == "Escanear Extrato (IA)":
                 elif itens_salvos > 0 and itens_duplicados > 0:
                     st.session_state["mensagem_status"] = {
                         "tipo": "warning",
-                        "texto": f"⚠️ {itens_salvos} transação(ões) salva(s), mas {itens_duplicados} lançamento(s) foram ignorados por já estarem cadastrados."
+                        "texto": f"⚠️ {itens_salvos} transação(ões) nova(s) salva(s), e {itens_duplicados} lançamento(s) foram ignorados por já estarem cadastrados."
                     }
                 elif itens_duplicados > 0 and itens_salvos == 0:
                     st.session_state["mensagem_status"] = {
                         "tipo": "warning",
-                        "texto": f"⚠️ Transação duplicada: todos os {itens_duplicados} lançamento(s) deste comprovante já existem no seu banco de dados com a mesma data, valor e descrição."
+                        "texto": f"⚠️ Nenhum item novo: todas as {itens_duplicados} transações deste arquivo já constavam no banco de dados."
                     }
 
                 st.session_state["dados_extraidos"] = []
