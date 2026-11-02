@@ -131,14 +131,14 @@ def processar_arquivo_extrato(arquivo_ou_img, is_pdf=False):
 def gerar_auditoria_semanal(dados_resumidos_txt):
     prompt = f"""
     Você é um consultor financeiro pessoal ágil e analítico.
-    Analise o seguinte consolidado da semana financeira do usuário:
+    Analise o consolidado da semana financeira do usuário (incluindo receitas, despesas e comparação com os tetos de orçamento planejados):
 
     {dados_resumidos_txt}
 
     Retorne OBRIGATORIAMENTE um JSON puro com esta estrutura:
     {{
-        "resumo_curto": "Frase de 1 ou 2 linhas resumindo o comportamento do dinheiro na semana de forma direta e motivadora/alerta.",
-        "analise_completa": "Análise detalhada em markdown (use bullet points) destacando: 1. Diagnóstico do fluxo, 2. Categoria mais pesada ou atípica, 3. Uma sugestão prática de ajuste para esta semana."
+        "resumo_curto": "Frase de 1 a 2 linhas resumindo a situação e destacando se alguma categoria estourou ou está perto do teto.",
+        "analise_completa": "Análise em markdown (com bullet points): 1. Diagnóstico do fluxo, 2. Categorias que mais consumiram o teto orçado, 3. Recomendações práticas para equilibrar o orçamento esta semana."
     }}
     """
     config = types.GenerateContentConfig(response_mime_type="application/json")
@@ -149,7 +149,7 @@ def gerar_auditoria_semanal(dados_resumidos_txt):
             config=config
         )
         return json.loads(response.text)
-    except Exception as e:
+    except Exception:
         return {
             "resumo_curto": "Dados da semana compilados com sucesso.",
             "analise_completa": "Não foi possível gerar a análise detalhada no momento."
