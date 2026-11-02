@@ -62,30 +62,26 @@ st.markdown("""
         line-height: 1.4;
     }
     
-    .budget-box {
-        background: #101c27;
-        border: 1px solid #1c2e40;
-        border-radius: 16px;
-        padding: 22px;
-        margin-top: 24px;
-        margin-bottom: 24px;
+    .chart-box { 
+        background: #101c27; 
+        border: 1px solid #1c2e40; 
+        border-radius: 16px; 
+        padding: 20px; 
+        margin-top: 20px; 
     }
-    .budget-header {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #ffffff;
-        margin-bottom: 4px;
-    }
-    .budget-sub {
-        font-size: 0.82rem;
-        color: #64748b;
-        margin-bottom: 16px;
-    }
-    
-    .chart-box { background: #101c27; border: 1px solid #1c2e40; border-radius: 16px; padding: 20px; margin-top: 20px; }
     .chart-pre-header { color: #5eead4; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
     .chart-header { font-size: 1.25rem; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
     .chart-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 16px; }
+
+    /* Customização dos containers com borda no dark mode */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background: #101c27;
+        border: 1px solid #1c2e40 !important;
+        border-radius: 16px !important;
+        padding: 16px !important;
+        margin-top: 16px;
+        margin-bottom: 20px;
+    }
 
     div.stButton > button:first-child { 
         background-color: #10b981; 
@@ -347,28 +343,29 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 5. ÚLTIMO QUADRANTE: Orçamento do Mês com Botão Integrado ---
+    # --- 5. ÚLTIMO QUADRANTE: Orçamento do Mês (Container Nativo Streamlit) ---
     hoje_data = datetime.today().date()
-    primeiro_dia_mes = hoje_data.replace(day=1)
     
-    with st.container():
-        st.markdown('<div class="budget-box">', unsafe_allow_html=True)
-        
-        # Cabeçalho com o botão Ajustar Tetos alinhado à direita
+    with st.container(border=True):
         col_b_title, col_b_btn = st.columns([3.5, 1.5])
         with col_b_title:
-            st.markdown('<div class="budget-header">🎯 Orçamento do Mês</div>', unsafe_allow_html=True)
-            st.markdown('<div class="budget-sub">Acompanhe o consumo dos seus tetos planejados para este mês.</div>', unsafe_allow_html=True)
+            st.markdown("### 🎯 Orçamento do Mês")
+            st.caption("Acompanhe o consumo dos seus tetos planejados para este mês.")
         with col_b_btn:
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
             if st.button("⚙️ Ajustar Tetos", use_container_width=True):
                 exibir_modal_orcamentos(df_orc)
 
-        # Listagem das categorias e barras de progresso dentro do quadro
         if not df_orc.empty:
             df_mes_atual = df.copy()
             if not df_mes_atual.empty:
-                df_mes_atual['dt'] = pd.to_datetime(df_mes_atual['data']).dt.date
-                df_mes_despesas = df_mes_atual[(df_mes_atual['dt'] >= primeiro_dia_mes) & (df_mes_atual['tipo'] == 'despesa')]
+                df_mes_atual['dt'] = pd.to_datetime(df_mes_atual['data'])
+                # Filtra estritamente pelo mês e ano atuais
+                df_mes_despesas = df_mes_atual[
+                    (df_mes_atual['dt'].dt.year == hoje_data.year) & 
+                    (df_mes_atual['dt'].dt.month == hoje_data.month) & 
+                    (df_mes_atual['tipo'] == 'despesa')
+                ]
                 gastos_categoria = df_mes_despesas.groupby('categoria')['valor'].sum().to_dict()
             else:
                 gastos_categoria = {}
@@ -386,12 +383,11 @@ if aba == "Visão Geral":
                 else:
                     status_emoji = "🟢"
 
-                st.write(f"**{status_emoji} {cat_nome}**: R$ {gasto_atual:,.2f} de R$ {teto:,.2f} ({int(percentual * 100)}%)")
+                # R\$ escapado para não conflitar com sintaxe LaTeX
+                st.write(f"**{status_emoji} {cat_nome}**: R\$ {gasto_atual:,.2f} de R\$ {teto:,.2f} ({int(percentual * 100)}%)")
                 st.progress(percentual)
         else:
-            st.info("Nenhum teto orçado cadastrado. Clique no botão acima para planejar seus gastos.")
-
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.info("Nenhum teto orçado cadastrado. Clique em '⚙️ Ajustar Tetos' para planejar seus gastos.")
 
 # ----------------- ABA 2: ESCANEAR EXTRATO COM GEMINI -----------------
 elif aba == "Escanear Extrato (IA)":
