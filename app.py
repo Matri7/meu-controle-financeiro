@@ -25,7 +25,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Pocketwise Fiel ao Design
+# Estilização CSS com Alinhamento Perfeito da Sidebar
 st.markdown("""
 <style>
     .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
@@ -34,25 +34,45 @@ st.markdown("""
     section[data-testid="stSidebar"] {
         background-color: #080d13 !important;
         border-right: 1px solid #141f2b !important;
-        padding-top: 1.5rem !important;
+        padding-top: 1.2rem !important;
     }
     
-    /* Botões da Sidebar transformados em Abas Retangulares */
+    /* Remove padding lateral excessivo do contentor da sidebar */
+    section[data-testid="stSidebar"] div[data-testid="stSidebarContent"] {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    /* Ajusta cada contentor de botão para não criar desalinhamentos verticais */
+    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(div.stButton) {
+        margin-bottom: 2px !important;
+    }
+
+    /* Formatação dos Botões da Sidebar como Retângulos Perfeitos */
+    section[data-testid="stSidebar"] div.stButton {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
     section[data-testid="stSidebar"] div.stButton > button {
         width: 100% !important;
         display: flex !important;
+        flex-direction: row !important;
         justify-content: flex-start !important;
         align-items: center !important;
         text-align: left !important;
+        gap: 12px !important;
         background-color: transparent !important;
-        color: #94a3b8 !important;
+        color: #8fa0b5 !important;
         border: 1px solid transparent !important;
-        border-radius: 12px !important;
-        padding: 12px 14px !important;
+        border-radius: 10px !important;
+        padding: 10px 14px !important;
         font-size: 0.92rem !important;
         font-weight: 500 !important;
-        margin-bottom: 4px !important;
+        line-height: 1.2 !important;
         transition: all 0.15s ease-in-out !important;
+        box-sizing: border-box !important;
     }
     
     section[data-testid="stSidebar"] div.stButton > button:hover {
@@ -60,12 +80,12 @@ st.markdown("""
         color: #f1f5f9 !important;
     }
     
-    /* Retângulo da Aba Ativa (Igual ao Print) */
+    /* Retângulo da Aba Ativa (Destaque alinhado sem quebra) */
     section[data-testid="stSidebar"] div.stButton > button[kind="primary"],
     section[data-testid="stSidebar"] div.stButton > button.nav-active {
         background-color: #101c27 !important;
         color: #ffffff !important;
-        font-weight: 700 !important;
+        font-weight: 600 !important;
         border: 1px solid #1c2e40 !important;
         border-left: 3.5px solid #2dd4bf !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
@@ -249,20 +269,20 @@ def parse_hora_automatica(texto_hora):
 
 # --- BARRA LATERAL ESTILO "DE BOLSO ." ---
 st.sidebar.markdown("""
-<div style="display: flex; align-items: center; gap: 12px; padding: 4px 6px 20px 6px;">
-    <div style="background: rgba(45, 212, 191, 0.08); border: 1.5px solid rgba(45, 212, 191, 0.4); border-radius: 12px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 4px 22px 4px;">
+    <div style="background: rgba(45, 212, 191, 0.08); border: 1.5px solid rgba(45, 212, 191, 0.4); border-radius: 12px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"></path>
             <path d="m3 7 9 6 9-6"></path>
             <circle cx="12" cy="13" r="1" fill="#2dd4bf"></circle>
         </svg>
     </div>
-    <div style="font-size: 1.35rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+    <div style="font-size: 1.3rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
         de bolso <span style="color: #2dd4bf;">.</span>
     </div>
 </div>
 
-<div style="font-size: 0.68rem; font-weight: 700; color: #52667a; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; padding-left: 6px;">
+<div style="font-size: 0.68rem; font-weight: 700; color: #4e6173; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; padding-left: 4px;">
     Espaço de trabalho
 </div>
 """, unsafe_allow_html=True)
@@ -270,9 +290,9 @@ st.sidebar.markdown("""
 if "aba_ativa" not in st.session_state:
     st.session_state["aba_ativa"] = "Visão Geral"
 
-# Botões de Navegação Retangulares com Ícones Minimalistas
+# Botões de Navegação com Alinhamento Perfeito
 btn_vg = st.sidebar.button(
-    "🏠   Visão Geral",
+    "🏠   Visão geral",
     key="nav_vg",
     type="primary" if st.session_state["aba_ativa"] == "Visão Geral" else "secondary",
     use_container_width=True
@@ -292,7 +312,7 @@ if btn_ub:
     st.rerun()
 
 btn_ex = st.sidebar.button(
-    "📄   Escanear Extrato (IA)",
+    "📄   Escanear extrato (IA)",
     key="nav_ex",
     type="primary" if st.session_state["aba_ativa"] == "Escanear Extrato (IA)" else "secondary",
     use_container_width=True
@@ -302,7 +322,7 @@ if btn_ex:
     st.rerun()
 
 btn_lr = st.sidebar.button(
-    "⚡   Lançamento Rápido",
+    "⚡   Lançamento rápido",
     key="nav_lr",
     type="primary" if st.session_state["aba_ativa"] == "Lançamento Rápido" else "secondary",
     use_container_width=True
