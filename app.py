@@ -42,16 +42,18 @@ st.markdown("""
         padding-right: 0.8rem !important;
     }
     
-    /* Espaçamento entre os botões */
+    /* Remove espaçamentos e margens parasitas dos botões da sidebar */
     section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:has(div.stButton) {
         margin-bottom: 4px !important;
     }
 
-    /* Trava o botão em largura total e alinhamento à esquerda */
     section[data-testid="stSidebar"] div.stButton {
         width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
+    /* O Botão retangular */
     section[data-testid="stSidebar"] div.stButton > button {
         width: 100% !important;
         display: flex !important;
@@ -63,24 +65,39 @@ st.markdown("""
         color: #8fa0b5 !important;
         border: 1px solid transparent !important;
         border-radius: 12px !important;
-        padding: 10px 14px !important;
+        padding: 10px 16px !important;
         font-size: 0.95rem !important;
         font-weight: 500 !important;
         transition: all 0.15s ease-in-out !important;
         box-sizing: border-box !important;
     }
 
-    /* Força o container interno de texto e markdown a NÃO centralizar */
+    /* QUEBRA A CENTRALIZAÇÃO NATIVA DO STREAMLIT: Força o conteúdo todo à esquerda */
+    section[data-testid="stSidebar"] div.stButton > button > div,
     section[data-testid="stSidebar"] div.stButton > button div[data-testid="stMarkdownContainer"],
     section[data-testid="stSidebar"] div.stButton > button p {
         display: flex !important;
+        flex-direction: row !important;
         align-items: center !important;
         justify-content: flex-start !important;
         text-align: left !important;
         width: 100% !important;
-        gap: 12px !important;
         margin: 0 !important;
         padding: 0 !important;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+    }
+
+    /* Fixa a largura e posição dos ícones para ficarem perfeitamente colunados */
+    section[data-testid="stSidebar"] div.stButton > button span[data-testid="stIconMaterial"] {
+        margin-right: 12px !important;
+        margin-left: 0 !important;
+        font-size: 1.25rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 24px !important;
+        flex-shrink: 0 !important;
     }
     
     section[data-testid="stSidebar"] div.stButton > button:hover {
@@ -88,7 +105,7 @@ st.markdown("""
         color: #f1f5f9 !important;
     }
     
-    /* Retângulo da Aba Ativa (Design Exato do Print) */
+    /* Retângulo da Aba Ativa (Design Exato do Print com traço verde menta) */
     section[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
         background-color: #101c27 !important;
         color: #ffffff !important;
@@ -96,6 +113,9 @@ st.markdown("""
         border: 1px solid #1c2e40 !important;
         border-left: 3.5px solid #2dd4bf !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    }
+    section[data-testid="stSidebar"] div.stButton > button[kind="primary"] span[data-testid="stIconMaterial"] {
+        color: #2dd4bf !important;
     }
 
     /* Cards e Métricas */
@@ -166,7 +186,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Injetor global de máscara direta no DOM Pai
+# Injetor global de máscara de maquininha de cartão
 components.html("""
 <script>
 function attachMasks() {
@@ -289,7 +309,7 @@ st.sidebar.markdown("""
     </div>
 </div>
 
-<div style="font-size: 0.68rem; font-weight: 700; color: #4e6173; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; padding-left: 4px;">
+<div style="font-size: 0.68rem; font-weight: 700; color: #4e6173; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; padding-left: 6px;">
     Espaço de trabalho
 </div>
 """, unsafe_allow_html=True)
@@ -297,10 +317,10 @@ st.sidebar.markdown("""
 if "aba_ativa" not in st.session_state:
     st.session_state["aba_ativa"] = "Visão Geral"
 
-# Botões de Navegação com Ícones Minimalistas Perfeitamente Alinhados
-# (Se quiser trocar qualquer ícone, basta editar o código SVG aqui)
+# Botões com o parâmetro oficial 'icon' do Streamlit
 btn_vg = st.sidebar.button(
-    ":material/home:   Visão geral",
+    "Visão geral",
+    icon=":material/home:",
     key="nav_vg",
     type="primary" if st.session_state["aba_ativa"] == "Visão Geral" else "secondary",
     use_container_width=True
@@ -310,7 +330,8 @@ if btn_vg:
     st.rerun()
 
 btn_ub = st.sidebar.button(
-    ":material/directions_car:   Controle Uber",
+    "Controle Uber",
+    icon=":material/directions_car:",
     key="nav_ub",
     type="primary" if st.session_state["aba_ativa"] == "Controle Uber" else "secondary",
     use_container_width=True
@@ -320,7 +341,8 @@ if btn_ub:
     st.rerun()
 
 btn_ex = st.sidebar.button(
-    ":material/document_scanner:   Escanear extrato (IA)",
+    "Escanear extrato (IA)",
+    icon=":material/document_scanner:",
     key="nav_ex",
     type="primary" if st.session_state["aba_ativa"] == "Escanear Extrato (IA)" else "secondary",
     use_container_width=True
@@ -330,7 +352,8 @@ if btn_ex:
     st.rerun()
 
 btn_lr = st.sidebar.button(
-    ":material/sync_alt:   Lançamento rápido",
+    "Lançamento rápido",
+    icon=":material/sync_alt:",
     key="nav_lr",
     type="primary" if st.session_state["aba_ativa"] == "Lançamento Rápido" else "secondary",
     use_container_width=True
