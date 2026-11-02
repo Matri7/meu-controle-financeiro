@@ -114,33 +114,51 @@ st.markdown("""
         color: #2dd4bf !important;
     }
 
-    /* Cards Personalizados de Navegação do Modal (Idênticos ao Menu Lateral) */
-    .modal-tab-group {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
+    /* Botões Retangulares do Modal (Idênticos ao Menu Lateral) */
+    div[data-testid="stDialog"] div.stButton > button {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        text-align: left !important;
+        background-color: #0a1118 !important;
+        color: #8fa0b5 !important;
+        border: 1px solid #162433 !important;
+        border-radius: 12px !important;
+        padding: 11px 16px !important;
+        font-size: 0.92rem !important;
+        font-weight: 500 !important;
+        transition: all 0.15s ease-in-out !important;
     }
-    .modal-tab-btn {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 16px;
-        background-color: #0a1118;
-        border: 1px solid #162433;
-        border-radius: 12px;
-        color: #8fa0b5;
-        font-size: 0.92rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        user-select: none;
+
+    div[data-testid="stDialog"] div.stButton > button > div,
+    div[data-testid="stDialog"] div.stButton > button div[data-testid="stMarkdownContainer"],
+    div[data-testid="stDialog"] div.stButton > button p {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    .modal-tab-btn:hover {
-        background-color: #0f1a24;
-        color: #ffffff;
+
+    div[data-testid="stDialog"] div.stButton > button span[data-testid="stIconMaterial"] {
+        margin-right: 10px !important;
+        font-size: 1.2rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
-    .modal-tab-btn.active {
+
+    div[data-testid="stDialog"] div.stButton > button:hover {
+        background-color: #0f1a24 !important;
+        color: #ffffff !important;
+    }
+
+    div[data-testid="stDialog"] div.stButton > button[kind="primary"] {
         background-color: #101c27 !important;
         color: #ffffff !important;
         font-weight: 600 !important;
@@ -148,40 +166,9 @@ st.markdown("""
         border-left: 3.5px solid #2dd4bf !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
     }
-    .modal-tab-btn.active svg {
-        stroke: #2dd4bf !important;
-    }
 
-    .sub-tab-group {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 16px;
-    }
-    .sub-tab-btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 14px;
-        background-color: #0a1118;
-        border: 1px solid #162433;
-        border-radius: 10px;
-        color: #8fa0b5;
-        font-size: 0.85rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        user-select: none;
-    }
-    .sub-tab-btn:hover {
-        background-color: #0f1a24;
-        color: #ffffff;
-    }
-    .sub-tab-btn.active {
-        background-color: #101c27 !important;
-        color: #ffffff !important;
-        font-weight: 600 !important;
-        border: 1px solid #1c2e40 !important;
-        border-left: 3px solid #2dd4bf !important;
+    div[data-testid="stDialog"] div.stButton > button[kind="primary"] span[data-testid="stIconMaterial"] {
+        color: #2dd4bf !important;
     }
 
     /* Cards e Métricas */
@@ -485,158 +472,156 @@ MESES_PT = {
     9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
 }
 
-# --- MODAL ADICIONAR TRANSAÇÃO: RETÂNGULOS FIÉIS AO DESIGN E SEM FECHAR ---
+# --- FRAGMENTO ISOLADO: ATUALIZA APENAS O CONTEÚDO INTERNO DO MODAL SEM FECHÁ-LO ---
+@st.fragment
+def renderizar_conteudo_modal_transacao():
+    if "modal_modo_entrada" not in st.session_state:
+        st.session_state["modal_modo_entrada"] = "Comando Rápido"
+    if "modal_sub_comando" not in st.session_state:
+        st.session_state["modal_sub_comando"] = "Texto"
+
+    # Botões Principais (Mesmo layout retangular com traço verde-menta da sidebar)
+    col_m1, col_m2, col_m3 = st.columns(3)
+    with col_m1:
+        if st.button(
+            "Comando Rápido",
+            icon=":material/bolt:",
+            key="frag_btn_rapido",
+            type="primary" if st.session_state["modal_modo_entrada"] == "Comando Rápido" else "secondary",
+            use_container_width=True
+        ):
+            st.session_state["modal_modo_entrada"] = "Comando Rápido"
+            st.rerun(scope="fragment")
+    with col_m2:
+        if st.button(
+            "Escanear Extrato (IA)",
+            icon=":material/description:",
+            key="frag_btn_extrato",
+            type="primary" if st.session_state["modal_modo_entrada"] == "Escanear Extrato" else "secondary",
+            use_container_width=True
+        ):
+            st.session_state["modal_modo_entrada"] = "Escanear Extrato"
+            st.rerun(scope="fragment")
+    with col_m3:
+        if st.button(
+            "Lançamento Manual",
+            icon=":material/edit:",
+            key="frag_btn_manual",
+            type="primary" if st.session_state["modal_modo_entrada"] == "Lançamento Manual" else "secondary",
+            use_container_width=True
+        ):
+            st.session_state["modal_modo_entrada"] = "Lançamento Manual"
+            st.rerun(scope="fragment")
+
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+    # Renderiza EXCLUSIVAMENTE o modo selecionado
+    if st.session_state["modal_modo_entrada"] == "Comando Rápido":
+        col_s1, col_s2, _ = st.columns([1.4, 1.4, 3.2])
+        with col_s1:
+            if st.button(
+                "Digitar Frase",
+                icon=":material/chat_bubble:",
+                key="frag_sub_txt",
+                type="primary" if st.session_state["modal_sub_comando"] == "Texto" else "secondary",
+                use_container_width=True
+            ):
+                st.session_state["modal_sub_comando"] = "Texto"
+                st.rerun(scope="fragment")
+        with col_s2:
+            if st.button(
+                "Gravar Voz",
+                icon=":material/mic:",
+                key="frag_sub_aud",
+                type="primary" if st.session_state["modal_sub_comando"] == "Áudio" else "secondary",
+                use_container_width=True
+            ):
+                st.session_state["modal_sub_comando"] = "Áudio"
+                st.rerun(scope="fragment")
+
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+        if st.session_state["modal_sub_comando"] == "Texto":
+            st.caption("Dite ou digite:")
+            col_t1, col_t2 = st.columns([4, 1.2])
+            with col_t1:
+                frase_dig = st.text_input("Comando de texto", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...", label_visibility="collapsed", key="frag_in_txt")
+            with col_t2:
+                btn_lancar_txt = st.button("Lançar com IA", key="frag_go_txt", use_container_width=True)
+            
+            if btn_lancar_txt and frase_dig.strip():
+                with st.spinner("Processando..."):
+                    ok, msg = processar_comando_texto(frase_dig)
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.warning(msg)
+
+        elif st.session_state["modal_sub_comando"] == "Áudio":
+            st.caption("Grave sua mensagem de voz:")
+            audio_gravado = st.audio_input("Áudio", label_visibility="collapsed", key="frag_in_aud")
+            if audio_gravado is not None and st.button("Processar Áudio com IA", key="frag_go_aud"):
+                with st.spinner("Processando áudio com IA..."):
+                    ok, msg = processar_comando_audio(audio_gravado.read(), mime_type="audio/wav")
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.warning(msg)
+
+    elif st.session_state["modal_modo_entrada"] == "Escanear Extrato":
+        st.caption("Suba o extrato bancário em PDF ou comprovantes/prints:")
+        uploaded_file = st.file_uploader("Arquivo", type=["png", "jpg", "jpeg", "pdf"], label_visibility="collapsed", key="frag_in_file")
+        if uploaded_file:
+            is_pdf = uploaded_file.name.lower().endswith(".pdf")
+            if not is_pdf:
+                img_prev = Image.open(uploaded_file)
+                st.image(img_prev, width=140)
+            else:
+                st.info(f"📄 Arquivo PDF carregado: {uploaded_file.name}")
+                
+            if st.button("Analisar e Extrair Transações", key="frag_go_doc"):
+                with st.spinner("IA analisando linhas do documento..."):
+                    arquivo_in = uploaded_file.read() if is_pdf else img_prev
+                    try:
+                        dados = processar_arquivo_extrato(arquivo_in, is_pdf=is_pdf)
+                        itens_salvos = 0
+                        for it in dados:
+                            ok, _ = salvar_no_banco(it)
+                            if ok: itens_salvos += 1
+                        st.success(f"{itens_salvos} transação(ões) adicionada(s) com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao processar documento: {e}")
+
+    elif st.session_state["modal_modo_entrada"] == "Lançamento Manual":
+        with st.form("form_modal_manual_frag"):
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                desc = st.text_input("Descrição", placeholder="Ex: Farmácia, Supermercado")
+                val_manual = st.text_input("Valor (R$)", value="R$ 0,00", help="Ex: digite 3550 para R$ 35,50")
+                data_m = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
+            with col_m2:
+                tipo = st.selectbox("Tipo", ["despesa", "receita"])
+                categoria = st.selectbox("Categoria", CATEGORIAS_DISPONIVEIS)
+                metodo = st.selectbox("Método", ["Pix", "Crédito", "Débito", "Dinheiro", "Boleto"])
+            
+            if st.form_submit_button("Salvar Transação"):
+                num_val = parse_moeda_automatica(val_manual)
+                if num_val <= 0:
+                    st.error("Informe um valor válido.")
+                else:
+                    payload = {"descricao": desc, "valor": num_val, "data": str(data_m), "tipo": tipo, "categoria": categoria, "metodo_pagamento": metodo}
+                    salvar_no_banco(payload)
+                    st.success("Transação salva com sucesso!")
+                    st.rerun()
+
 @st.dialog("Adicionar Transação", width="large")
 def exibir_modal_adicionar_transacao():
     st.caption("Escolha a melhor forma para registrar seu lançamento financeiro:")
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # 1. Seletor Principal em HTML puro (Idêntico aos botões da Sidebar)
-    st.markdown("""
-    <div class="modal-tab-group">
-        <div id="tab-btn-rapido" class="modal-tab-btn active" onclick="switchModalTab('rapido')">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            Comando Rápido
-        </div>
-        <div id="tab-btn-extrato" class="modal-tab-btn" onclick="switchModalTab('extrato')">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8fa0b5" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            Escanear Extrato (IA)
-        </div>
-        <div id="tab-btn-manual" class="modal-tab-btn" onclick="switchModalTab('manual')">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8fa0b5" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-            Lançamento Manual
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # JavaScript no DOM Pai para alternar visibilidade sem fechar o diálogo
-    components.html("""
-    <script>
-    window.parent.switchModalTab = function(tabName) {
-        const doc = window.parent.document;
-        // Alterna os botões
-        doc.querySelectorAll('.modal-tab-btn').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = doc.getElementById('tab-btn-' + tabName);
-        if (activeBtn) activeBtn.classList.add('active');
-
-        // Alterna as seções
-        const secRapido = doc.getElementById('sec-rapido');
-        const secExtrato = doc.getElementById('sec-extrato');
-        const secManual = doc.getElementById('sec-manual');
-        if (secRapido) secRapido.style.display = (tabName === 'rapido') ? 'block' : 'none';
-        if (secExtrato) secExtrato.style.display = (tabName === 'extrato') ? 'block' : 'none';
-        if (secManual) secManual.style.display = (tabName === 'manual') ? 'block' : 'none';
-    };
-
-    window.parent.switchSubTab = function(subName) {
-        const doc = window.parent.document;
-        doc.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = doc.getElementById('sub-btn-' + subName);
-        if (activeBtn) activeBtn.classList.add('active');
-
-        const subTxt = doc.getElementById('sub-sec-texto');
-        const subAudio = doc.getElementById('sub-sec-audio');
-        if (subTxt) subTxt.style.display = (subName === 'texto') ? 'block' : 'none';
-        if (subAudio) subAudio.style.display = (subName === 'audio') ? 'block' : 'none';
-    };
-    </script>
-    """, height=0, width=0)
-
-    # 1. SEÇÃO COMANDO RÁPIDO
-    st.markdown('<div id="sec-rapido" style="display: block;">', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="sub-tab-group">
-        <div id="sub-btn-texto" class="sub-tab-btn active" onclick="switchSubTab('texto')">
-            💬 Digitar Frase
-        </div>
-        <div id="sub-btn-audio" class="sub-tab-btn" onclick="switchSubTab('audio')">
-            🎙️ Gravar Voz
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div id="sub-sec-texto" style="display: block;">', unsafe_allow_html=True)
-    st.caption("Dite ou digite:")
-    col_t1, col_t2 = st.columns([4, 1.2])
-    with col_t1:
-        frase_dig = st.text_input("Comando de texto", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...", label_visibility="collapsed", key="in_modal_txt")
-    with col_t2:
-        btn_lancar_txt = st.button("Lançar com IA", key="btn_lancar_ia_modal", use_container_width=True)
-    
-    if btn_lancar_txt and frase_dig.strip():
-        with st.spinner("Processando..."):
-            ok, msg = processar_comando_texto(frase_dig)
-            if ok:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.warning(msg)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div id="sub-sec-audio" style="display: none;">', unsafe_allow_html=True)
-    st.caption("Grave sua mensagem de voz:")
-    audio_gravado = st.audio_input("Áudio", label_visibility="collapsed", key="in_modal_aud")
-    if audio_gravado is not None and st.button("Processar Áudio com IA", key="btn_proc_aud_modal"):
-        with st.spinner("Processando áudio com IA..."):
-            ok, msg = processar_comando_audio(audio_gravado.read(), mime_type="audio/wav")
-            if ok:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.warning(msg)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # 2. SEÇÃO ESCANEAR EXTRATO
-    st.markdown('<div id="sec-extrato" style="display: none;">', unsafe_allow_html=True)
-    st.caption("Suba o extrato bancário em PDF ou comprovantes/prints:")
-    uploaded_file = st.file_uploader("Arquivo", type=["png", "jpg", "jpeg", "pdf"], label_visibility="collapsed", key="in_modal_file")
-    if uploaded_file:
-        is_pdf = uploaded_file.name.lower().endswith(".pdf")
-        if not is_pdf:
-            img_prev = Image.open(uploaded_file)
-            st.image(img_prev, width=140)
-        else:
-            st.info(f"📄 Arquivo PDF carregado: {uploaded_file.name}")
-            
-        if st.button("Analisar e Extrair Transações", key="btn_proc_doc_modal"):
-            with st.spinner("IA analisando linhas do documento..."):
-                arquivo_in = uploaded_file.read() if is_pdf else img_prev
-                try:
-                    dados = processar_arquivo_extrato(arquivo_in, is_pdf=is_pdf)
-                    itens_salvos = 0
-                    for it in dados:
-                        ok, _ = salvar_no_banco(it)
-                        if ok: itens_salvos += 1
-                    st.success(f"{itens_salvos} transação(ões) adicionada(s) com sucesso!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao processar documento: {e}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # 3. SEÇÃO LANÇAMENTO MANUAL
-    st.markdown('<div id="sec-manual" style="display: none;">', unsafe_allow_html=True)
-    with st.form("form_modal_manual_sync"):
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            desc = st.text_input("Descrição", placeholder="Ex: Farmácia, Supermercado")
-            val_manual = st.text_input("Valor (R$)", value="R$ 0,00", help="Ex: digite 3550 para R$ 35,50")
-            data_m = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
-        with col_m2:
-            tipo = st.selectbox("Tipo", ["despesa", "receita"])
-            categoria = st.selectbox("Categoria", CATEGORIAS_DISPONIVEIS)
-            metodo = st.selectbox("Método", ["Pix", "Crédito", "Débito", "Dinheiro", "Boleto"])
-        
-        if st.form_submit_button("Salvar Transação"):
-            num_val = parse_moeda_automatica(val_manual)
-            if num_val <= 0:
-                st.error("Informe um valor válido.")
-            else:
-                payload = {"descricao": desc, "valor": num_val, "data": str(data_m), "tipo": tipo, "categoria": categoria, "metodo_pagamento": metodo}
-                salvar_no_banco(payload)
-                st.success("Transação salva com sucesso!")
-                st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+    renderizar_conteudo_modal_transacao()
 
 @st.dialog("Definir Tetos de Orçamento Mensal", width="medium")
 def exibir_modal_orcamentos(df_orcamentos_atuais):
