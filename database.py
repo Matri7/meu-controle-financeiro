@@ -50,10 +50,8 @@ def salvar_orcamento(categoria, valor_teto):
 
 # --- Funções do Módulo Uber ---
 def salvar_diaria_uber(dados_uber):
-    # 1. Salva na tabela dedicada de métricas operacionais
     supabase.table("diarias_uber").insert(dados_uber).execute()
     
-    # 2. Lança automaticamente o ganho bruto como receita na tabela geral de transações
     transacao_payload = {
         "data": dados_uber["data"],
         "descricao": f"Ganhos Uber ({dados_uber['km_rodados']} km)",
@@ -69,6 +67,12 @@ def carregar_diarias_uber():
     if res.data:
         return pd.DataFrame(res.data)
     return pd.DataFrame(columns=["id", "data", "ganho_bruto", "km_rodados", "horas_online", "custo_km_padrao", "outros_gastos", "observacao"])
+
+def atualizar_diaria_uber(id_diaria, dados_atualizados):
+    supabase.table("diarias_uber").update(dados_atualizados).eq("id", id_diaria).execute()
+
+def excluir_diaria_uber(id_diaria):
+    supabase.table("diarias_uber").delete().eq("id", id_diaria).execute()
 
 # --- Funções de Cache de Relatório Semanal ---
 def obter_relatorio_semanal(semana_ano):
