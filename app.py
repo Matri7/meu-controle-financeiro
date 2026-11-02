@@ -19,21 +19,71 @@ from ai_service import (
 from charts import renderizar_grafico_fluxo, renderizar_grafico_pizza
 
 st.set_page_config(
-    page_title="FinSmart | Controle Financeiro",
+    page_title="de bolso . | Finanças Pessoais",
     page_icon="💳",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Pocketwise
+# Estilização CSS Minimalista Dark + Pocketwise Navigation
 st.markdown("""
 <style>
-    .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
-    section[data-testid="stSidebar"] { background-color: #080d13; border-right: 1px solid #162433; }
+    .stApp { background-color: #0d131a; color: #f1f5f9; font-family: 'Inter', sans-serif; }
     
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #090e15 !important;
+        border-right: 1px solid #141c26 !important;
+        padding-top: 1.2rem;
+    }
+    
+    /* Esconde a bolinha de rádio nativa do Streamlit */
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {
+        display: none !important;
+    }
+    
+    /* Estilo dos itens de menu na barra lateral */
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label {
+        display: flex !important;
+        align-items: center !important;
+        padding: 12px 16px !important;
+        margin-bottom: 6px !important;
+        border-radius: 10px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+    }
+    
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+    }
+    
+    /* Item Selecionado (Active State com traço lateral verde menta) */
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
+        background-color: #111a24 !important;
+        border: 1px solid #1a2a38 !important;
+        border-left: 4px solid #34d399 !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Textos do menu */
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label p {
+        font-size: 0.95rem !important;
+        color: #94a3b8 !important;
+        margin: 0 !important;
+    }
+    
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p {
+        color: #f8fafc !important;
+    }
+
+    /* Cards e Containers */
     .metric-card { 
-        background: #101c27; 
-        border: 1px solid #1c2e40; 
+        background: #111a24; 
+        border: 1px solid #1a2a38; 
         border-radius: 16px; 
         padding: 22px; 
         margin-bottom: 16px; 
@@ -66,8 +116,8 @@ st.markdown("""
     }
     
     .chart-box { 
-        background: #101c27; 
-        border: 1px solid #1c2e40; 
+        background: #111a24; 
+        border: 1px solid #1a2a38; 
         border-radius: 16px; 
         padding: 20px; 
         margin-top: 20px; 
@@ -77,10 +127,10 @@ st.markdown("""
     .chart-sub { font-size: 0.85rem; color: #64748b; margin-bottom: 16px; }
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        background: #101c27;
-        border: 1px solid #1c2e40 !important;
+        background: #111a24;
+        border: 1px solid #1a2a38 !important;
         border-radius: 16px !important;
-        padding: 16px !important;
+        padding: 18px !important;
         margin-top: 16px;
         margin-bottom: 20px;
     }
@@ -106,15 +156,12 @@ function attachMasks() {
         const parentDoc = window.parent.document;
         if (!parentDoc) return;
 
-        // 1. MÁSCARA ESTILO MAQUININHA DE CARTÃO
-        // Aplica nos campos de Ganhos Brutos, Outros Gastos e Valor Manual
         const moneyInputs = parentDoc.querySelectorAll('input[aria-label*="Ganhos Brutos"], input[aria-label*="Outros Gastos"], input[aria-label*="Valor (R$)"], input[aria-label*="Custo Estimado"]');
         
         moneyInputs.forEach(input => {
             if (input.dataset.posMask === "true") return;
             input.dataset.posMask = "true";
 
-            // Se estiver vazio ao focar, inicializa com R$ 0,00
             input.addEventListener('focus', function() {
                 if (!this.value || this.value.trim() === '') {
                     this.value = 'R$ 0,00';
@@ -131,12 +178,10 @@ function attachMasks() {
                     partes[0] = partes[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');
                     this.value = 'R$ ' + partes[0] + ',' + partes[1];
                 }
-                // Dispara evento nativo para sincronizar com o React do Streamlit
                 this.dispatchEvent(new Event('change', { bubbles: true }));
             });
         });
 
-        // 2. MÁSCARA DE TEMPO (Ex: 110 -> 1:10 h | 45 -> 0:45 h)
         const timeInputs = parentDoc.querySelectorAll('input[aria-label*="Tempo Online"]');
         timeInputs.forEach(input => {
             if (input.dataset.timeMask === "true") return;
@@ -172,8 +217,6 @@ function attachMasks() {
         console.error(e);
     }
 }
-
-// Roda a cada 200ms para garantir que re-renderizações não percam o ouvinte
 setInterval(attachMasks, 200);
 </script>
 """, height=0, width=0)
@@ -213,9 +256,34 @@ def parse_hora_automatica(texto_hora):
     hora_formatada = f"{h}:{m:02d} h"
     return hora_decimal, hora_formatada
 
-st.sidebar.markdown("### 💳 FinSmart")
-st.sidebar.caption("Seu orçamento sob foco")
-aba = st.sidebar.radio("Navegar", ["Visão Geral", "Controle Uber", "Escanear Extrato (IA)", "Lançamento Rápido"])
+# --- Cabeçalho e Logo "de bolso ." Customizados na Barra Lateral ---
+st.sidebar.markdown("""
+<div style="display: flex; align-items: center; gap: 14px; padding: 6px 4px 24px 4px;">
+    <div style="background: rgba(45, 212, 191, 0.08); border: 1.5px solid rgba(45, 212, 191, 0.4); border-radius: 12px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"></path>
+            <path d="m3 7 9 6 9-6"></path>
+            <circle cx="12" cy="13" r="1" fill="#2dd4bf"></circle>
+        </svg>
+    </div>
+    <div style="font-size: 1.35rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+        de bolso <span style="color: #2dd4bf;">.</span>
+    </div>
+</div>
+
+<div style="font-size: 0.68rem; font-weight: 700; color: #52667a; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; padding-left: 6px;">
+    Espaço de trabalho
+</div>
+""", unsafe_allow_html=True)
+
+# Opções de Menu com Formatação Minimalista
+opcoes_menu = ["Visão Geral", "Controle Uber", "Escanear Extrato (IA)", "Lançamento Rápido"]
+
+aba = st.sidebar.radio(
+    label="Navegação",
+    options=opcoes_menu,
+    label_visibility="collapsed"
+)
 
 CATEGORIAS_DISPONIVEIS = ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"]
 
