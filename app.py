@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from database import (
     supabase, formatar_data_br, carregar_transacoes, salvar_no_banco,
     atualizar_transacao, excluir_transacao,
+    carregar_orcamentos, salvar_orcamento,
     obter_relatorio_semanal, salvar_relatorio_semanal
 )
 from ai_service import (
@@ -61,6 +62,25 @@ st.markdown("""
         line-height: 1.4;
     }
     
+    .budget-box {
+        background: #101c27;
+        border: 1px solid #1c2e40;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .budget-header {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 4px;
+    }
+    .budget-sub {
+        font-size: 0.82rem;
+        color: #64748b;
+        margin-bottom: 14px;
+    }
+    
     .chart-box { background: #101c27; border: 1px solid #1c2e40; border-radius: 16px; padding: 20px; margin-top: 20px; }
     .chart-pre-header { color: #5eead4; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
     .chart-header { font-size: 1.25rem; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
@@ -83,14 +103,38 @@ st.sidebar.markdown("### 💳 FinSmart")
 st.sidebar.caption("Seu orçamento sob foco")
 aba = st.sidebar.radio("Navegar", ["Visão Geral", "Escanear Extrato (IA)", "Lançamento Rápido"])
 
+CATEGORIAS_DISPONIVEIS = ["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"]
+
+# Janela modal para configurar os tetos de orçamento
+@st.dialog("Definir Tetos de Orçamento Mensal", width="medium")
+def exibir_modal_orcamentos(df_orcamentos_atuais):
+    st.caption("Estabeleça o valor máximo que você planeja gastar por categoria a cada mês.")
+    
+    mapa_orcamentos = {}
+    if not df_orcamentos_atuais.empty:
+        for _, row in df_orcamentos_atuais.iterrows():
+            mapa_orcamentos[row["categoria"]] = float(row["valor_teto"])
+
+    novos_valores = {}
+    with st.form("form_orcamentos"):
+        for cat in CATEGORIAS_DISPONIVEIS:
+            val_atual = mapa_orcamentos.get(cat, 0.0)
+            novos_valores[cat] = st.number_input(f"{cat} (R$)", min_value=0.0, value=val_atual, step=50.0)
+        
+        btn_salvar_orc = st.form_submit_button("💾 Salvar Tetos")
+        if btn_salvar_orc:
+            for cat, val in novos_valores.items():
+                if val > 0:
+                    salvar_orcamento(cat, val)
+            st.success("Orçamentos salvos com sucesso!")
+            st.rerun()
+
 # Janela modal com editor interativo corrigido
 @st.dialog("Histórico e Gerenciamento de Transações", width="large")
 def exibir_modal_historico(dados_completos):
     st.caption("Pode alterar os campos diretamente nas células e carregar no botão abaixo para guardar as alterações.")
 
     df_editavel = dados_completos[["id", "data", "descricao", "valor", "tipo", "categoria", "metodo_pagamento"]].copy()
-    
-    # Conversão de tipos para evitar conflitos no Streamlit
     df_editavel["data"] = pd.to_datetime(df_editavel["data"]).dt.date
     df_editavel["valor"] = df_editavel["valor"].astype(float)
 
@@ -105,7 +149,7 @@ def exibir_modal_historico(dados_completos):
             "descricao": st.column_config.TextColumn("Descrição", required=True),
             "valor": st.column_config.NumberColumn("Valor (R$)", format="R$ %.2f", min_value=0.01, required=True),
             "tipo": st.column_config.SelectboxColumn("Tipo", options=["despesa", "receita"], required=True),
-            "categoria": st.column_config.SelectboxColumn("Categoria", options=["Alimentação", "Transporte", "Moradia", "Lazer", "Saúde", "Serviços", "Outros"], required=True),
+            "categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS_DISPONIVEIS, required=True),
             "metodo_pagamento": st.column_config.SelectboxColumn("Método", options=["Pix", "Crédito", "Débito", "Dinheiro", "Boleto"], required=True)
         },
         key="editor_transacoes"
@@ -138,6 +182,7 @@ def exibir_modal_auditoria(texto_analise):
     st.markdown(texto_analise)
 
 df = carregar_transacoes()
+df_orc = carregar_orcamentos()
 
 # ----------------- ABA 1: VISÃO GERAL -----------------
 if aba == "Visão Geral":
@@ -145,7 +190,7 @@ if aba == "Visão Geral":
     st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- Seção de Auditoria Semanal Inteligente ---
+    # --- Seção de Auditoria Semanal Inteligente com Cruzamento de Orçamento ---
     if not df.empty:
         hoje = datetime.today().date()
         semana_atual_chave = f"{hoje.year}-W{hoje.isocalendar()[1]}"
@@ -162,7 +207,12 @@ if aba == "Visão Geral":
                 desp_sem = df_semana[df_semana['tipo'] == 'despesa']['valor'].sum()
                 cat_top = df_semana[df_semana['tipo'] == 'despesa'].groupby('categoria')['valor'].sum().to_dict()
                 
-                resumo_texto = f"Período: Últimos 7 dias. Receitas: R$ {rec_sem:.2f}. Despesas: R$ {desp_sem:.2f}. Gastos por categoria: {cat_top}."
+                orc_info = ""
+                if not df_orc.empty:
+                    orc_map = dict(zip(df_orc['categoria'], df_orc['valor_teto']))
+                    orc_info = f"Tetos orçados por categoria: {orc_map}."
+
+                resumo_texto = f"Período: Últimos 7 dias. Receitas: R$ {rec_sem:.2f}. Despesas: R$ {desp_sem:.2f}. Gastos por categoria na semana: {cat_top}. {orc_info}"
                 resultado_ia = gerar_auditoria_semanal(resumo_texto)
                 salvar_relatorio_semanal(semana_atual_chave, resultado_ia["resumo_curto"], resultado_ia["analise_completa"])
                 relatorio_cache = resultado_ia
@@ -219,6 +269,53 @@ if aba == "Visão Geral":
     with col3:
         st.markdown(f'<div class="metric-card"><div class="metric-title">Gastos Totais</div><div class="metric-value">R$ {despesas:,.2f}</div></div>', unsafe_allow_html=True)
 
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- Seção de Orçamento do Mês com Barras de Progresso ---
+    hoje_data = datetime.today().date()
+    primeiro_dia_mes = hoje_data.replace(day=1)
+    
+    st.markdown("""
+    <div class="budget-box">
+        <div class="budget-header">🎯 Orçamento do Mês</div>
+        <div class="budget-sub">Acompanhe o consumo dos seus tetos planejados para este mês.</div>
+    """, unsafe_allow_html=True)
+
+    col_orc_top1, col_orc_top2 = st.columns([4, 1.2])
+    with col_orc_top2:
+        if st.button("⚙️ Ajustar Tetos"):
+            exibir_modal_orcamentos(df_orc)
+
+    if not df_orc.empty:
+        # Filtra os gastos do mês corrente
+        df_mes_atual = df.copy()
+        if not df_mes_atual.empty:
+            df_mes_atual['dt'] = pd.to_datetime(df_mes_atual['data']).dt.date
+            df_mes_despesas = df_mes_atual[(df_mes_atual['dt'] >= primeiro_dia_mes) & (df_mes_atual['tipo'] == 'despesa')]
+            gastos_categoria = df_mes_despesas.groupby('categoria')['valor'].sum().to_dict()
+        else:
+            gastos_categoria = {}
+
+        for _, orc in df_orc.iterrows():
+            cat_nome = orc['categoria']
+            teto = float(orc['valor_teto'])
+            gasto_atual = float(gastos_categoria.get(cat_nome, 0.0))
+            percentual = min(gasto_atual / teto, 1.0) if teto > 0 else 0.0
+            
+            # Status e cor do progresso
+            if percentual >= 0.90:
+                status_emoji = "🔴"
+            elif percentual >= 0.70:
+                status_emoji = "🟡"
+            else:
+                status_emoji = "🟢"
+
+            st.write(f"**{status_emoji} {cat_nome}**: R$ {gasto_atual:,.2f} de R$ {teto:,.2f} ({int(percentual * 100)}%)")
+            st.progress(percentual)
+    else:
+        st.info("Nenhum teto orçado cadastrado. Clique em '⚙️ Ajustar Tetos' para planejar seus gastos.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Gráfico Estilo Google Ads
