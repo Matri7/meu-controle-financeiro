@@ -25,7 +25,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Cirúrgica e Responsiva (Desktop & Mobile)
+# Estilização CSS Cirúrgica e Totalmente Responsiva
 st.markdown("""
 <style>
     .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
@@ -85,7 +85,6 @@ st.markdown("""
 
     section[data-testid="stSidebar"] div.stButton > button span[data-testid="stIconMaterial"] {
         margin-right: 12px !important;
-        margin-left: 0 !important;
         font-size: 1.25rem !important;
         display: inline-flex !important;
         align-items: center !important;
@@ -111,32 +110,40 @@ st.markdown("""
         color: #2dd4bf !important;
     }
 
-    /* FORÇA O BOTÃO ADICIONAR E DEMAIS PRIMÁRIOS NO VERDE PADRÃO DO APP */
-    button[data-testid="stBaseButton-primary"],
+    /* FORÇA A COR VERDE-MENTA EM TODOS OS BOTÕES PRIMÁRIOS (ZERO VERMELHO/CORAL) */
     button[data-testid="baseButton-primary"],
     button[kind="primary"],
-    .stButton > button[kind="primary"],
-    div.stButton > button[kind="primary"] {
+    div.stButton > button[kind="primary"],
+    div.stButton > button[data-testid="baseButton-primary"] {
         background-color: #34d399 !important;
         background: #34d399 !important;
-        color: #052e16 !important;
-        border: none !important;
+        color: #042614 !important;
         font-weight: 700 !important;
+        border: none !important;
         border-radius: 10px !important;
+        box-shadow: 0 2px 8px rgba(52, 211, 153, 0.25) !important;
     }
-    button[data-testid="stBaseButton-primary"]:hover,
+    button[data-testid="baseButton-primary"] p,
+    button[kind="primary"] p,
+    button[data-testid="baseButton-primary"] span,
+    button[kind="primary"] span {
+        color: #042614 !important;
+        font-weight: 700 !important;
+    }
     button[data-testid="baseButton-primary"]:hover,
-    button[kind="primary"]:hover,
-    .stButton > button[kind="primary"]:hover {
+    button[kind="primary"]:hover {
         background-color: #10b981 !important;
         background: #10b981 !important;
         color: #ffffff !important;
     }
-    button[data-testid="stBaseButton-primary"] span,
-    button[kind="primary"] span {
-        color: #052e16 !important;
+    button[data-testid="baseButton-primary"]:hover p,
+    button[kind="primary"]:hover p,
+    button[data-testid="baseButton-primary"]:hover span,
+    button[kind="primary"]:hover span {
+        color: #ffffff !important;
     }
 
+    /* Botão Secundário e Terciário */
     div.main div.stButton > button[kind="secondary"] {
         background-color: #101c27 !important;
         color: #cbd5e1 !important;
@@ -151,92 +158,106 @@ st.markdown("""
         border-color: #2dd4bf !important;
     }
 
-    /* BOTÕES TERCIÁRIOS (SETAS, LÁPIS E LIXEIRA) */
-    button[data-testid="stBaseButton-tertiary"],
-    button[data-testid="baseButton-tertiary"],
-    button[kind="tertiary"],
-    .stButton > button[kind="tertiary"] {
+    div.main div.stButton > button[kind="tertiary"] {
         background-color: transparent !important;
-        color: #8fa0b5 !important;
+        color: #64748b !important;
         border: none !important;
-        padding: 4px !important;
-        min-height: 32px !important;
-        height: 32px !important;
+        padding: 0 !important;
+        min-height: 36px !important;
         border-radius: 6px !important;
     }
-    button[data-testid="stBaseButton-tertiary"]:hover,
-    button[kind="tertiary"]:hover {
-        color: #34d399 !important;
-        background-color: rgba(52, 211, 153, 0.08) !important;
+    div.main div.stButton > button[kind="tertiary"]:hover {
+        background-color: rgba(255, 255, 255, 0.06) !important;
+        color: #2dd4bf !important;
     }
 
-    /* SELETOR DE MÊS FIXO EM UMA LINHA HORIZONTAL (NUNCA QUEBRA EM COLUNAS NO MOBILE) */
-    div[data-testid="stHorizontalBlock"]:has(.month-selector-marker) {
+    /* TRAVA O SELETOR DE MÊS SEMPRE NA HORIZONTAL (DESKTOP E MOBILE) */
+    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: nowrap !important;
         align-items: center !important;
-        justify-content: center !important;
-        background: #101c27 !important;
-        border: 1px solid #1e2f40 !important;
-        border-radius: 12px !important;
-        padding: 2px 4px !important;
-        gap: 2px !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
         width: 100% !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(.month-selector-marker) > div[data-testid="column"] {
-        width: auto !important;
-        min-width: 0 !important;
-        flex: 0 0 34px !important;
-        padding: 0 !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.month-selector-marker) > div[data-testid="column"]:nth-child(2) {
-        flex: 1 1 auto !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.month-selector-marker) div[data-baseweb="select"] > div {
-        background-color: transparent !important;
-        border: none !important;
-        color: #f1f5f9 !important;
-        font-weight: 600 !important;
-        font-size: 0.86rem !important;
-        padding: 0 4px !important;
-        height: 36px !important;
-    }
-
-    /* LINHA DE TRANSAÇÃO SEMPRE HORIZONTAL (DESKTOP E MOBILE) */
-    div[data-testid="stHorizontalBlock"]:has(.tx-row-anchor) {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        padding: 6px 0 !important;
-        gap: 6px !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.tx-row-anchor) > div[data-testid="column"]:nth-child(1) {
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-        padding: 0 !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.tx-row-anchor) > div[data-testid="column"]:nth-child(2) {
-        flex: 0 0 auto !important;
-        text-align: right !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: flex-end !important;
-        padding: 0 !important;
-    }
-    div[data-testid="stHorizontalBlock"]:has(.tx-row-anchor) > div[data-testid="column"]:nth-child(3),
-    div[data-testid="stHorizontalBlock"]:has(.tx-row-anchor) > div[data-testid="column"]:nth-child(4) {
+    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) > div[data-testid="column"]:nth-child(1),
+    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) > div[data-testid="column"]:nth-child(3) {
         flex: 0 0 34px !important;
         width: 34px !important;
         min-width: 34px !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) > div[data-testid="column"]:nth-child(2) {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) div[data-baseweb="select"] {
+        background-color: #101c27 !important;
+        border: 1px solid #1e2f40 !important;
+        border-radius: 10px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+    }
+
+    /* TRAVA A LINHA DA TRANSAÇÃO EM UMA LINHA HORIZONTAL ÚNICA (DESKTOP E MOBILE) */
+    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) {
         display: flex !important;
+        flex-direction: row !important;
         align-items: center !important;
-        justify-content: center !important;
+        flex-wrap: nowrap !important;
+        padding: 8px 0 !important;
+        border-bottom: 1px solid #14202c !important;
+        gap: 6px !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) > div[data-testid="column"]:nth-child(1) {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) > div[data-testid="column"]:nth-child(2) {
+        flex: 0 0 auto !important;
+        min-width: 82px !important;
+        text-align: right !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) > div[data-testid="column"]:nth-child(3),
+    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) > div[data-testid="column"]:nth-child(4) {
+        flex: 0 0 32px !important;
+        width: 32px !important;
+        min-width: 32px !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) button {
+        height: 32px !important;
+        min-height: 32px !important;
+        width: 32px !important;
+        margin: 0 !important;
         padding: 0 !important;
     }
 
+    /* Badge de Contagem Verde */
+    .count-badge {
+        background-color: rgba(45, 212, 191, 0.12);
+        color: #2dd4bf;
+        border: 1px solid rgba(45, 212, 191, 0.3);
+        padding: 2px 9px;
+        border-radius: 12px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        margin-left: 8px;
+        vertical-align: middle;
+    }
+
+    /* Cards e Métricas */
+    .metric-card { 
+        background: #101c27; 
+        border: 1px solid #1c2e40; 
+        border-radius: 16px; 
+        padding: 20px; 
+        margin-bottom: 16px; 
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); 
+    }
+    .metric-title { color: #7b94a8; font-size: 0.80rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .metric-value { font-size: 1.80rem; font-weight: 700; color: #f8fafc; }
+    .metric-highlight { color: #34d399; }
+
+    /* Itens de Transação */
     .tx-left {
         display: flex;
         align-items: center;
@@ -255,7 +276,7 @@ st.markdown("""
         flex-shrink: 0;
     }
     .tx-desc {
-        font-size: 0.92rem;
+        font-size: 0.90rem;
         font-weight: 600;
         color: #f8fafc;
         white-space: nowrap;
@@ -274,44 +295,13 @@ st.markdown("""
         font-size: 0.94rem;
         font-weight: 700;
         color: #f1f5f9;
-        margin: 0 !important;
-        padding: 0 !important;
         white-space: nowrap;
     }
     .tx-val-receita {
         font-size: 0.94rem;
         font-weight: 700;
         color: #34d399;
-        margin: 0 !important;
-        padding: 0 !important;
         white-space: nowrap;
-    }
-    .tx-divider {
-        border-bottom: 1px solid #14202c;
-        margin: 2px 0;
-    }
-
-    .metric-card { 
-        background: #101c27; 
-        border: 1px solid #1c2e40; 
-        border-radius: 16px; 
-        padding: 22px; 
-        margin-bottom: 16px; 
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); 
-    }
-    .metric-title { color: #7b94a8; font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-    .metric-value { font-size: 1.85rem; font-weight: 700; color: #f8fafc; }
-    .metric-highlight { color: #34d399; }
-
-    .count-badge {
-        background-color: rgba(45, 212, 191, 0.12);
-        color: #2dd4bf;
-        border: 1px solid rgba(45, 212, 191, 0.3);
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        margin-left: 8px;
     }
 
     div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -325,72 +315,74 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Script JS Inteligente para Fechamento Automático da Sidebar no Mobile ao Clicar
+# Script JS: Recolhe a barra lateral no mobile automaticamente ao clicar em uma aba
 components.html("""
 <script>
-function setupMobileAutoClose() {
+function bindMobileSidebarClose() {
     try {
         const parentDoc = window.parent.document;
         if (!parentDoc) return;
-        
+
         const isMobile = window.parent.innerWidth <= 768;
-        if (isMobile) {
-            const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
-            if (sidebar) {
-                const buttons = sidebar.querySelectorAll('div.stButton > button');
-                buttons.forEach(btn => {
-                    if (!btn.dataset.closeListenerAttached) {
-                        btn.dataset.closeListenerAttached = "true";
-                        btn.addEventListener('click', () => {
-                            setTimeout(() => {
-                                // Tenta o botão de recolher (o '<<')
-                                const closeBtn = sidebar.querySelector('button[data-testid="stSidebarCollapseButton"]')
-                                              || parentDoc.querySelector('button[data-testid="stSidebarCollapseButton"]')
-                                              || sidebar.querySelector('button[aria-label*="Close"]')
-                                              || sidebar.querySelector('button[aria-label*="Fechar"]');
-                                if (closeBtn) {
-                                    closeBtn.click();
-                                } else {
-                                    const backdrop = parentDoc.querySelector('[data-testid="stSidebarBackdrop"]');
-                                    if (backdrop) backdrop.click();
-                                }
-                            }, 100);
-                        });
-                    }
+        if (!isMobile) return;
+
+        const navBtns = parentDoc.querySelectorAll('section[data-testid="stSidebar"] div.stButton > button');
+        navBtns.forEach(btn => {
+            if (!btn.dataset.mobileCloseBound) {
+                btn.dataset.mobileCloseBound = "true";
+                btn.addEventListener('click', () => {
+                    setTimeout(() => {
+                        const backdrop = parentDoc.querySelector('[data-testid="stSidebarBackdrop"]');
+                        if (backdrop) {
+                            backdrop.click();
+                        } else {
+                            const closeBtn = parentDoc.querySelector('[data-testid="stSidebarCollapseButton"] button') ||
+                                             parentDoc.querySelector('button[aria-label="Close sidebar"]') ||
+                                             parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
+                            if (closeBtn) closeBtn.click();
+                        }
+                    }, 60);
                 });
             }
-        }
+        });
     } catch(e) {}
 }
-setInterval(setupMobileAutoClose, 300);
+setInterval(bindMobileSidebarClose, 300);
 </script>
 """, height=0, width=0)
 
-# Parsing de Moeda Seguro (Sem falhas se o usuário digitar sem máscara)
-def parse_moeda_automatica(texto_val):
-    if not texto_val:
+# Parsing Flexível de Moeda e Tempo
+def parse_moeda_flexivel(val):
+    if val is None:
         return 0.0
-    txt = str(texto_val).replace("R$", "").replace("r$", "").strip()
+    if isinstance(val, (int, float)):
+        return float(val)
+    txt = str(val).replace("R$", "").replace("r$", "").strip()
     if not txt:
         return 0.0
     if "," in txt:
-        txt_limpo = txt.replace(".", "").replace(",", ".")
+        if "." in txt:
+            txt = txt.replace(".", "").replace(",", ".")
+        else:
+            txt = txt.replace(",", ".")
         try:
-            return float(txt_limpo)
+            return float(txt)
         except ValueError:
-            return 0.0
+            pass
     elif "." in txt:
         try:
             return float(txt)
         except ValueError:
+            pass
+    digits = "".join(c for c in txt if c.isdigit())
+    if digits:
+        try:
+            return float(digits)
+        except ValueError:
             return 0.0
-    else:
-        digitos = "".join([c for c in txt if c.isdigit()])
-        if not digitos:
-            return 0.0
-        return float(digitos) / 100.0
+    return 0.0
 
-def parse_hora_automatica(texto_hora):
+def parse_hora_flexivel(texto_hora):
     if not texto_hora:
         return 0.0, "0:00 h"
     txt = str(texto_hora).replace("h", "").replace("H", "").strip()
@@ -398,6 +390,13 @@ def parse_hora_automatica(texto_hora):
         partes = txt.split(":")
         h = int(partes[0].strip()) if partes[0].strip().isdigit() else 0
         m = int(partes[1].strip()) if len(partes) > 1 and partes[1].strip().isdigit() else 0
+    elif "." in txt:
+        try:
+            h_dec = float(txt)
+            h = int(h_dec)
+            m = int((h_dec - h) * 60)
+        except ValueError:
+            h, m = 0, 0
     else:
         digitos = "".join([c for c in txt if c.isdigit()])
         if not digitos:
@@ -415,6 +414,7 @@ def parse_hora_automatica(texto_hora):
     hora_formatada = f"{h}:{m:02d} h"
     return hora_decimal, hora_formatada
 
+# Ícones Minimalistas em SVG
 MAPA_SVGS_CAT = {
     "Alimentação": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
     "Transporte": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>',
@@ -502,7 +502,7 @@ if btn_orc:
 
 aba = st.session_state["aba_ativa"]
 
-# Dados globais e Lista de Meses
+# Carregamento Geral de Dados
 df = carregar_transacoes()
 df_orc = carregar_orcamentos()
 df_uber = carregar_diarias_uber()
@@ -520,12 +520,13 @@ if not df_uber.empty:
     df_uber['periodo_chave'] = df_uber['data_dt'].dt.strftime('%Y-%m')
     meses_disponiveis.update(df_uber['periodo_chave'].dropna().tolist())
 
+# Popula o ano completo (Janeiro a Dezembro)
 ano_hoje = datetime.today().year
 for m_idx in range(1, 13):
     meses_disponiveis.add(f"{ano_hoje}-{m_idx:02d}")
 
-# Lista em ordem decrescente (ex: Dezembro de 2026 até Janeiro)
-LISTA_MESES_ORDENADA = sorted(list(meses_disponiveis), reverse=True)
+# Ordem Cronológica: Janeiro -> Dezembro
+LISTA_MESES_ORDENADA = sorted(list(meses_disponiveis))
 
 if "mes_selecionado_global" not in st.session_state:
     st.session_state["mes_selecionado_global"] = mes_atual_chave
@@ -535,65 +536,67 @@ def formatar_mes_extenso(chave_ym, caixa_alta=False):
     texto = f"{MESES_PT[int(mes)]} de {ano}"
     return texto.upper() if caixa_alta else texto
 
-# Callbacks Oficiais do Streamlit para o Seletor de Mês (Garante funcionamento imediato)
-def ir_mes_anterior(key_prefix):
+def trocar_mes_delta(delta):
     idx = LISTA_MESES_ORDENADA.index(st.session_state["mes_selecionado_global"])
-    if idx < len(LISTA_MESES_ORDENADA) - 1:
-        novo_mes = LISTA_MESES_ORDENADA[idx + 1]
-        st.session_state["mes_selecionado_global"] = novo_mes
-        st.session_state[f"sel_mes_{key_prefix}"] = novo_mes
+    novo_idx = idx + delta
+    if 0 <= novo_idx < len(LISTA_MESES_ORDENADA):
+        st.session_state["mes_selecionado_global"] = LISTA_MESES_ORDENADA[novo_idx]
 
-def ir_mes_proximo(key_prefix):
-    idx = LISTA_MESES_ORDENADA.index(st.session_state["mes_selecionado_global"])
-    if idx > 0:
-        novo_mes = LISTA_MESES_ORDENADA[idx - 1]
-        st.session_state["mes_selecionado_global"] = novo_mes
-        st.session_state[f"sel_mes_{key_prefix}"] = novo_mes
-
-def ao_mudar_select_mes(key_prefix):
-    st.session_state["mes_selecionado_global"] = st.session_state[f"sel_mes_{key_prefix}"]
+def on_select_mes(prefixo):
+    st.session_state["mes_selecionado_global"] = st.session_state[f"sel_mes_{prefixo}"]
 
 def renderizar_seletor_mes_Global(key_prefix):
-    if f"sel_mes_{key_prefix}" not in st.session_state:
-        st.session_state[f"sel_mes_{key_prefix}"] = st.session_state["mes_selecionado_global"]
-        
-    c_prev, c_label, c_next = st.columns([1, 4.8, 1], vertical_alignment="center")
-    with c_prev:
-        st.button("", icon=":material/chevron_left:", key=f"btn_prev_{key_prefix}", on_click=ir_mes_anterior, args=(key_prefix,), type="tertiary", use_container_width=True)
-    with c_label:
-        st.markdown('<span class="month-selector-marker"></span>', unsafe_allow_html=True)
+    """Seletor de mês: setas laterais + dropdown no centro com todos os meses do ano"""
+    idx_atual = LISTA_MESES_ORDENADA.index(st.session_state["mes_selecionado_global"])
+    
+    col_p, col_sel, col_n = st.columns([1, 6, 1], vertical_alignment="center")
+    with col_p:
+        if st.button("", icon=":material/chevron_left:", key=f"prev_{key_prefix}", type="tertiary", help="Mês anterior", use_container_width=True):
+            if idx_atual > 0:
+                trocar_mes_delta(-1)
+                st.rerun()
+    with col_sel:
         st.selectbox(
             "Mês",
             options=LISTA_MESES_ORDENADA,
             format_func=lambda x: formatar_mes_extenso(x),
+            index=idx_atual,
             key=f"sel_mes_{key_prefix}",
-            on_change=ao_mudar_select_mes,
+            on_change=on_select_mes,
             args=(key_prefix,),
             label_visibility="collapsed"
         )
-    with c_next:
-        st.button("", icon=":material/chevron_right:", key=f"btn_next_{key_prefix}", on_click=ir_mes_proximo, args=(key_prefix,), type="tertiary", use_container_width=True)
+    with col_n:
+        if st.button("", icon=":material/chevron_right:", key=f"next_{key_prefix}", type="tertiary", help="Próximo mês", use_container_width=True):
+            if idx_atual < len(LISTA_MESES_ORDENADA) - 1:
+                trocar_mes_delta(1)
+                st.rerun()
 
-# --- POPUP DE CONFIRMAÇÃO DE EXCLUSÃO (ACIONADO PELA LIXEIRA) ---
-@st.dialog("Confirmar Exclusão", width="small")
-def modal_confirmar_exclusao(tx_id, desc_tx, val_tx, tipo_tx):
-    st.markdown("### Excluir Lançamento?")
-    sinal = "-" if tipo_tx == "despesa" else "+"
-    st.write(f"Tem certeza que deseja apagar **\"{desc_tx}\"** ({sinal} R$ {float(val_tx):,.2f})?")
-    st.caption("⚠️ Esta ação não pode ser desfeita.")
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        if st.button("Cancelar", key=f"btn_cancel_{tx_id}", use_container_width=True):
-            st.rerun()
-    with col_c2:
-        if st.button("Sim, Excluir", key=f"btn_del_conf_{tx_id}", type="primary", use_container_width=True):
-            excluir_transacao(tx_id)
-            st.toast("Transação excluída com sucesso!", icon=":material/delete:")
-            st.rerun()
+# --- FUNÇÃO UNIFICADA DE CABEÇALHO PARA TODAS AS ABAS ---
+def renderizar_cabecalho_pagina(breadcrumb_texto, titulo, subtitulo, acao_tipo=None, prefix=""):
+    st.caption(breadcrumb_texto)
+    col_title_box, col_actions_box = st.columns([1.6, 1.4], vertical_alignment="center")
+    with col_title_box:
+        st.markdown(f"<h2 style='margin:0; font-size:1.75rem; font-weight:700; color:#fff;'>{titulo}</h2>", unsafe_allow_html=True)
+        st.caption(subtitulo)
+    with col_actions_box:
+        if acao_tipo:
+            c_month, c_act = st.columns([1.25, 0.95], vertical_alignment="center")
+            with c_month:
+                renderizar_seletor_mes_Global(prefix)
+            with c_act:
+                if acao_tipo == "adicionar":
+                    if st.button("Adicionar", icon=":material/add:", type="primary", key=f"btn_add_{prefix}", use_container_width=True):
+                        exibir_modal_adicionar_transacao()
+                elif acao_tipo == "orcamentos":
+                    if st.button("Configurar", icon=":material/tune:", type="primary", key=f"btn_cfg_{prefix}", use_container_width=True):
+                        exibir_modal_orcamentos(df_orc)
+        else:
+            _, c_month = st.columns([0.4, 1.6], vertical_alignment="center")
+            with c_month:
+                renderizar_seletor_mes_Global(prefix)
 
-# --- MODAL DE EDIÇÃO INDIVIDUAL (ACIONADO PELO LÁPIS) ---
+# --- MODAIS E DIÁLOGOS ---
 @st.dialog("Editar Transação", width="medium")
 def exibir_modal_editar_unica(row_data):
     st.caption(f"Editando lançamento #{row_data['id']}")
@@ -604,17 +607,13 @@ def exibir_modal_editar_unica(row_data):
             novo_val = st.number_input("Valor (R$)", min_value=0.01, value=float(row_data["valor"]), step=1.0)
             nova_data = st.date_input("Data", pd.to_datetime(row_data["data"]).date(), format="DD/MM/YYYY")
         with col_e2:
-            tipos_lista = ["despesa", "receita"]
-            idx_tipo = tipos_lista.index(row_data["tipo"]) if row_data["tipo"] in tipos_lista else 0
-            novo_tipo = st.selectbox("Tipo", tipos_lista, index=idx_tipo)
+            tipos = ["despesa", "receita"]
+            novo_tipo = st.selectbox("Tipo", tipos, index=tipos.index(row_data["tipo"]) if row_data["tipo"] in tipos else 0)
+            nova_cat = st.selectbox("Categoria", CATEGORIAS_DISPONIVEIS, index=CATEGORIAS_DISPONIVEIS.index(row_data["categoria"]) if row_data["categoria"] in CATEGORIAS_DISPONIVEIS else 0)
             
-            idx_cat = CATEGORIAS_DISPONIVEIS.index(row_data["categoria"]) if row_data["categoria"] in CATEGORIAS_DISPONIVEIS else 0
-            nova_cat = st.selectbox("Categoria", CATEGORIAS_DISPONIVEIS, index=idx_cat)
-            
-        metodos_lista = ["Pix", "Crédito", "Débito", "Dinheiro", "Boleto", "Conta Corrente"]
+        metodos = ["Pix", "Crédito", "Débito", "Dinheiro", "Boleto", "Conta Corrente"]
         metodo_atual = row_data.get("metodo_pagamento", "Pix")
-        idx_met = metodos_lista.index(metodo_atual) if metodo_atual in metodos_lista else 0
-        novo_metodo = st.selectbox("Método de Pagamento", metodos_lista, index=idx_met)
+        novo_metodo = st.selectbox("Método", metodos, index=metodos.index(metodo_atual) if metodo_atual in metodos else 0)
         
         if st.form_submit_button("Salvar Alterações", icon=":material/check:", type="primary"):
             payload_up = {
@@ -626,10 +625,25 @@ def exibir_modal_editar_unica(row_data):
                 "metodo_pagamento": novo_metodo
             }
             atualizar_transacao(int(row_data["id"]), payload_up)
-            st.success("Lançamento atualizado com sucesso!")
+            st.success("Transação atualizada com sucesso!")
             st.rerun()
 
-# --- MODAL ESTÁVEL DE ADICIONAR TRANSAÇÃO ---
+@st.dialog("Confirmar Exclusão", width="small")
+def exibir_modal_confirmar_exclusao(tx_id, desc_tx):
+    st.markdown("### Excluir transação?")
+    st.warning("⚠️ Esta ação é definitiva e não poderá ser desfeita.")
+    st.write(f"Deseja realmente apagar **'{desc_tx}'**?")
+    
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        if st.button("Cancelar", key=f"cancel_del_{tx_id}", use_container_width=True):
+            st.rerun()
+    with col_c2:
+        if st.button("Sim, Excluir", key=f"confirm_del_{tx_id}", type="primary", use_container_width=True):
+            excluir_transacao(tx_id)
+            st.success("Transação excluída com sucesso!")
+            st.rerun()
+
 @st.fragment
 def renderizar_conteudo_modal_transacao():
     if "modal_modo_entrada" not in st.session_state:
@@ -672,7 +686,7 @@ def renderizar_conteudo_modal_transacao():
             with col_t1:
                 frase_dig = st.text_input("Comando de texto", placeholder="Ex: Paguei 35 reais no almoço no débito hoje...", label_visibility="collapsed", key="frag_in_txt")
             with col_t2:
-                btn_lancar_txt = st.button("Lançar com IA", icon=":material/send:", key="frag_go_txt", type="primary", use_container_width=True)
+                btn_lancar_txt = st.button("Lançar com IA", icon=":material/send:", key="frag_go_txt", use_container_width=True)
             
             if btn_lancar_txt and frase_dig.strip():
                 with st.spinner("Processando..."):
@@ -686,7 +700,7 @@ def renderizar_conteudo_modal_transacao():
         elif st.session_state["modal_sub_comando"] == "Áudio":
             st.caption("Grave sua mensagem de voz:")
             audio_gravado = st.audio_input("Áudio", label_visibility="collapsed", key="frag_in_aud")
-            if audio_gravado is not None and st.button("Processar Áudio com IA", icon=":material/graphic_eq:", key="frag_go_aud", type="primary"):
+            if audio_gravado is not None and st.button("Processar Áudio com IA", icon=":material/graphic_eq:", key="frag_go_aud"):
                 with st.spinner("Processando áudio com IA..."):
                     ok, msg = processar_comando_audio(audio_gravado.read(), mime_type="audio/wav")
                     if ok:
@@ -706,7 +720,7 @@ def renderizar_conteudo_modal_transacao():
             else:
                 st.info(f"Arquivo PDF carregado: {uploaded_file.name}")
                 
-            if st.button("Analisar e Extrair Transações", icon=":material/document_scanner:", key="frag_go_doc", type="primary"):
+            if st.button("Analisar e Extrair Transações", icon=":material/document_scanner:", key="frag_go_doc"):
                 with st.spinner("IA analisando linhas do documento..."):
                     arquivo_in = uploaded_file.read() if is_pdf else img_prev
                     try:
@@ -725,7 +739,7 @@ def renderizar_conteudo_modal_transacao():
             col_m1, col_m2 = st.columns(2)
             with col_m1:
                 desc = st.text_input("Descrição", placeholder="Ex: Farmácia, Supermercado")
-                val_manual = st.text_input("Valor (R$)", value="R$ 0,00", help="Ex: digite 3550 para R$ 35,50")
+                val_manual = st.text_input("Valor (R$)", placeholder="Ex: 35,50")
                 data_m = st.date_input("Data", datetime.today(), format="DD/MM/YYYY")
             with col_m2:
                 tipo = st.selectbox("Tipo", ["despesa", "receita"])
@@ -733,7 +747,7 @@ def renderizar_conteudo_modal_transacao():
                 metodo = st.selectbox("Método", ["Pix", "Crédito", "Débito", "Dinheiro", "Boleto"])
             
             if st.form_submit_button("Salvar Transação", icon=":material/check:", type="primary"):
-                num_val = parse_moeda_automatica(val_manual)
+                num_val = parse_moeda_flexivel(val_manual)
                 if num_val <= 0:
                     st.error("Informe um valor válido.")
                 else:
@@ -744,13 +758,13 @@ def renderizar_conteudo_modal_transacao():
 
 @st.dialog("Adicionar Transação", width="large")
 def exibir_modal_adicionar_transacao():
-    st.caption("Escolha a forma de lançamento:")
+    st.caption("Escolha a melhor forma para registrar seu lançamento financeiro:")
     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
     renderizar_conteudo_modal_transacao()
 
 @st.dialog("Definir Tetos de Orçamento Mensal", width="medium")
 def exibir_modal_orcamentos(df_orcamentos_atuais):
-    st.caption("Estabeleça o valor máximo que você planeja gastar por categoria no mês.")
+    st.caption("Estabeleça o valor máximo que você planeja gastar por categoria a cada mês.")
     mapa_orcamentos = {row["categoria"]: float(row["valor_teto"]) for _, row in df_orcamentos_atuais.iterrows()} if not df_orcamentos_atuais.empty else {}
 
     novos_valores = {}
@@ -770,23 +784,20 @@ def exibir_modal_orcamentos(df_orcamentos_atuais):
 def exibir_modal_auditoria(texto_analise):
     st.markdown(texto_analise)
 
-# Filtragem de Data Global
+# Filtragem de Dados Globais
 mes_ativo = st.session_state["mes_selecionado_global"]
 df_mes_ativo = df[df['periodo_chave'] == mes_ativo].copy() if not df.empty else pd.DataFrame(columns=["id", "data", "descricao", "valor", "tipo", "categoria", "metodo_pagamento"])
 df_uber_mes = df_uber[df_uber['periodo_chave'] == mes_ativo].copy() if not df_uber.empty else pd.DataFrame(columns=["id", "data", "ganho_bruto", "km_rodados", "horas_online", "custo_km_padrao", "outros_gastos"])
 
 # ----------------- ABA 1: VISÃO GERAL -----------------
 if aba == "Visão Geral":
-    col_t_left, col_t_month, col_t_add = st.columns([2.4, 1.4, 1.2], vertical_alignment="center")
-    with col_t_left:
-        st.caption(f"• SUA SITUAÇÃO FINANCEIRA  /  {formatar_mes_extenso(mes_ativo, True)}")
-        st.markdown("## Seu dinheiro, em foco.")
-        st.caption("Visão em tempo real das suas receitas, despesas e distribuição de gastos.")
-    with col_t_month:
-        renderizar_seletor_mes_Global("vg")
-    with col_t_add:
-        if st.button("Adicionar transação", icon=":material/add:", type="primary", key="add_vg", use_container_width=True):
-            exibir_modal_adicionar_transacao()
+    renderizar_cabecalho_pagina(
+        breadcrumb_texto=f"• SUA SITUAÇÃO FINANCEIRA  /  {formatar_mes_extenso(mes_ativo, True)}",
+        titulo="Seu dinheiro, em foco.",
+        subtitulo="Visão em tempo real das suas receitas e despesas.",
+        acao_tipo="adicionar",
+        prefix="vg"
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -889,7 +900,7 @@ if aba == "Visão Geral":
                     sinal = "-" if r_vg["tipo"] == "despesa" else "+"
                     cor_v = "tx-val-despesa" if r_vg["tipo"] == "despesa" else "tx-val-receita"
                     st.markdown(f"""
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid #14202c;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 6px 0; border-bottom: 1px solid #14202c;">
                         <div class="tx-left">
                             <div class="tx-icon-box">{svg_v}</div>
                             <div>
@@ -913,23 +924,20 @@ if aba == "Visão Geral":
             else:
                 st.info("Sem despesas para exibir a distribuição neste mês.")
 
-# ----------------- ABA 2: TRANSAÇÕES (ALINHAMENTO RIGOROSO) -----------------
+# ----------------- ABA 2: TRANSAÇÕES (ALINHADA + LÁPIS E LIXEIRA) -----------------
 elif aba == "Transações":
     if "limite_transacoes" not in st.session_state:
         st.session_state["limite_transacoes"] = 20
 
-    col_t_left, col_t_month, col_t_add = st.columns([2.4, 1.4, 1.2], vertical_alignment="center")
-    with col_t_left:
-        st.caption(f"• SUA SITUAÇÃO FINANCEIRA  /  {formatar_mes_extenso(mes_ativo, True)}")
-        st.markdown("## Cada movimento, contabilizado.")
-        st.caption("Suas receitas e despesas, tudo em um só lugar.")
-    with col_t_month:
-        renderizar_seletor_mes_Global("tx")
-    with col_t_add:
-        if st.button("Adicionar transação", icon=":material/add:", type="primary", key="add_tx", use_container_width=True):
-            exibir_modal_adicionar_transacao()
+    renderizar_cabecalho_pagina(
+        breadcrumb_texto=f"• SUA SITUAÇÃO FINANCEIRA  /  {formatar_mes_extenso(mes_ativo, True)}",
+        titulo="Cada movimento, contabilizado.",
+        subtitulo="Suas receitas e despesas, tudo em um só lugar.",
+        acao_tipo="adicionar",
+        prefix="tx"
+    )
 
-    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
     df_tx = df_mes_ativo.copy()
     total_mes = len(df_tx)
@@ -965,7 +973,7 @@ elif aba == "Transações":
                 df_tx = df_tx[df_tx["categoria"] == filtro_cat]
 
         st.markdown("""
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 4px 6px 4px; border-bottom: 1px solid #182838; margin-bottom: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; border-bottom: 1px solid #182838; margin-bottom: 4px;">
             <div style="font-size: 0.72rem; font-weight: 700; color: #52667a; text-transform: uppercase; letter-spacing: 0.1em;">
                 TRANSAÇÃO
             </div>
@@ -990,12 +998,9 @@ elif aba == "Transações":
                 tipo_mov = row["tipo"]
                 metodo = row.get("metodo_pagamento", "Pix")
 
-                sinal = "-" if tipo_mov == "despesa" else "+"
+                val_formatado = f"- R$ {val:,.2f}" if tipo_mov == "despesa" else f"+ R$ {val:,.2f}"
                 css_val = "tx-val-despesa" if tipo_mov == "despesa" else "tx-val-receita"
-                val_formatado = f"{sinal} R$ {val:,.2f}"
 
-                # Linha com alinhamento rigoroso
-                st.markdown('<span class="tx-row-anchor"></span>', unsafe_allow_html=True)
                 c_info, c_val, c_edit, c_del = st.columns([5.8, 2.0, 0.45, 0.45], vertical_alignment="center")
                 with c_info:
                     st.markdown(f"""
@@ -1010,13 +1015,11 @@ elif aba == "Transações":
                 with c_val:
                     st.markdown(f'<div class="{css_val}">{val_formatado}</div>', unsafe_allow_html=True)
                 with c_edit:
-                    if st.button("", icon=":material/edit:", key=f"ed_tx_{tx_id}", type="tertiary", help="Editar transação", use_container_width=True):
+                    if st.button("", icon=":material/edit:", key=f"ed_tx_{tx_id}", type="tertiary", help="Editar", use_container_width=True):
                         exibir_modal_editar_unica(row)
                 with c_del:
-                    if st.button("", icon=":material/delete:", key=f"del_tx_{tx_id}", type="tertiary", help="Excluir transação", use_container_width=True):
-                        modal_confirmar_exclusao(tx_id, desc, val, tipo_mov)
-
-                st.markdown('<div class="tx-divider"></div>', unsafe_allow_html=True)
+                    if st.button("", icon=":material/delete:", key=f"del_tx_{tx_id}", type="tertiary", help="Excluir", use_container_width=True):
+                        exibir_modal_confirmar_exclusao(tx_id, desc)
 
             if total_filtradas > st.session_state["limite_transacoes"]:
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -1028,15 +1031,15 @@ elif aba == "Transações":
         else:
             st.info("Nenhuma transação encontrada neste mês com os filtros aplicados.")
 
-# ----------------- ABA 3: CONTROLE UBER (GRAVAÇÃO CORRIGIDA) -----------------
+# ----------------- ABA 3: CONTROLE UBER -----------------
 elif aba == "Controle Uber":
-    col_u_left, col_u_month = st.columns([3.2, 1.8], vertical_alignment="center")
-    with col_u_left:
-        st.caption(f"• OPERAÇÃO RENDA EXTRA  /  {formatar_mes_extenso(mes_ativo, True)}")
-        st.markdown("## Painel de Desempenho Uber")
-        st.caption("Acompanhe sua renda líquida real e produtividade por hora no mês.")
-    with col_u_month:
-        renderizar_seletor_mes_Global("uber")
+    renderizar_cabecalho_pagina(
+        breadcrumb_texto=f"• OPERAÇÃO RENDA EXTRA  /  {formatar_mes_extenso(mes_ativo, True)}",
+        titulo="Painel de Desempenho Uber",
+        subtitulo="Acompanhe sua renda líquida real e produtividade por hora no mês.",
+        acao_tipo=None,
+        prefix="uber"
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1062,29 +1065,28 @@ elif aba == "Controle Uber":
 
     with st.container(border=True):
         st.markdown("#### Registrar Diária de Corridas")
-        st.caption("Preencha os valores do resumo diário da Uber.")
+        st.caption("Preencha com os dados do aplicativo.")
         
         with st.form("form_diaria_uber"):
             col_f1, col_f2 = st.columns(2)
             with col_f1:
                 data_diaria = st.date_input("Data da Diária", datetime.today(), format="DD/MM/YYYY")
-                bruto_txt = st.text_input("Ganhos Brutos (R$)", value="R$ 0,00", help="Ex: digite 12523 para virar R$ 125,23")
+                bruto_txt = st.text_input("Ganhos Brutos (R$)", placeholder="Ex: 150,00 ou 150")
                 km_txt = st.text_input("Quilômetros Rodados (Km)", placeholder="Ex: 52 ou 52.4")
             with col_f2:
-                tempo_txt = st.text_input("Tempo Online", value="0:00 h", help="Ex: digite 110 para virar 1:10 h")
+                tempo_txt = st.text_input("Tempo Online", placeholder="Ex: 1:25 ou 125")
                 custo_km_txt = st.text_input("Custo Estimado por KM (R$)", value="R$ 0,45")
-                outros_txt = st.text_input("Outros Gastos (R$)", value="R$ 0,00")
+                outros_txt = st.text_input("Outros Gastos (R$)", placeholder="Ex: 10,00 (opcional)")
 
             if st.form_submit_button("Salvar Diária e Sincronizar", icon=":material/check:", type="primary"):
-                val_bruto = parse_moeda_automatica(bruto_txt)
-                km_limpo = "".join([c for c in str(km_txt) if c.isdigit() or c in ",."]).replace(",", ".")
-                val_km = float(km_limpo) if km_limpo else 0.0
-                val_horas, hora_legivel = parse_hora_automatica(tempo_txt)
-                val_custo_km = parse_moeda_automatica(custo_km_txt)
-                val_outros = parse_moeda_automatica(outros_txt)
+                val_bruto = parse_moeda_flexivel(bruto_txt)
+                val_km = parse_moeda_flexivel(km_txt)
+                val_horas, hora_legivel = parse_hora_flexivel(tempo_txt)
+                val_custo_km = parse_moeda_flexivel(custo_km_txt) if custo_km_txt.strip() else 0.45
+                val_outros = parse_moeda_flexivel(outros_txt)
 
                 if val_bruto <= 0:
-                    st.error("Informe um ganho bruto válido superior a zero.")
+                    st.error("Informe um ganho bruto superior a zero.")
                 else:
                     payload_uber = {
                         "data": str(data_diaria),
@@ -1148,16 +1150,13 @@ elif aba == "Controle Uber":
 
 # ----------------- ABA 4: ORÇAMENTOS -----------------
 elif aba == "Orçamentos":
-    col_o_left, col_o_month, col_o_cfg = st.columns([2.4, 1.4, 1.2], vertical_alignment="center")
-    with col_o_left:
-        st.caption(f"• PLANEJAMENTO MENSAL  /  {formatar_mes_extenso(mes_ativo, True)}")
-        st.markdown("## Tetos de Orçamento")
-        st.caption("Acompanhe o limite e o consumo planejado para cada categoria.")
-    with col_o_month:
-        renderizar_seletor_mes_Global("orc")
-    with col_o_cfg:
-        if st.button("Configurar Tetos", icon=":material/tune:", type="primary", use_container_width=True):
-            exibir_modal_orcamentos(df_orc)
+    renderizar_cabecalho_pagina(
+        breadcrumb_texto=f"• PLANEJAMENTO MENSAL  /  {formatar_mes_extenso(mes_ativo, True)}",
+        titulo="Tetos de Orçamento",
+        subtitulo="Acompanhe o limite e o consumo planejado por categoria.",
+        acao_tipo="orcamentos",
+        prefix="orc"
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1190,4 +1189,4 @@ elif aba == "Orçamentos":
                 """, unsafe_allow_html=True)
                 st.progress(percentual)
         else:
-            st.info("Nenhum orçamento cadastrado. Clique em 'Configurar Tetos' no topo para definir seus limites.")
+            st.info("Nenhum orçamento cadastrado. Clique em 'Configurar' no topo para definir seus limites.")
