@@ -495,6 +495,30 @@ st.markdown("""
         font-weight: 750;
         margin: 3px 0 0;
     }
+    .pw-ai-card {
+        background: linear-gradient(135deg, #10252a 0%, #101c27 100%);
+        border: 1px solid rgba(45, 212, 191, 0.24);
+        border-radius: 16px;
+        padding: 18px 20px;
+        margin: 0 0 18px;
+    }
+    .pw-ai-title {
+        color: #f8fafc;
+        font-size: 1.08rem;
+        font-weight: 750;
+        margin: 4px 0 5px;
+    }
+    .pw-ai-copy {
+        color: #94a3b8;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        max-width: 720px;
+    }
+    .pw-ai-options {
+        color: #5eead4;
+        font-size: 0.76rem;
+        margin-top: 10px;
+    }
 
     @media (max-width: 768px) {
         .pw-dashboard-hero {
@@ -1087,6 +1111,17 @@ if aba == "Visão Geral":
         st.markdown(f'<div class="metric-card"><div class="pw-card-label">Despesas</div><div class="pw-card-value">R$ {despesas_mes:,.2f}</div><div class="pw-card-note">Em todas as categorias</div></div>', unsafe_allow_html=True)
     with col3:
         st.markdown(f'<div class="metric-card"><div class="pw-card-label">Orçamento restante</div><div class="pw-card-value">R$ {orcamento_restante:,.2f}</div><div class="pw-card-note">{percentual_orcamento:.0f}% do planejado utilizado</div></div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="pw-ai-card">
+        <div class="pw-section-eyebrow">Entrada inteligente</div>
+        <div class="pw-ai-title">Registre um gasto do jeito mais rápido para você.</div>
+        <div class="pw-ai-copy">O Gemini interpreta uma frase informal, uma foto, um PDF ou um áudio e preenche os dados da transação.</div>
+        <div class="pw-ai-options">Texto  ·  Foto  ·  PDF  ·  Áudio</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Abrir entrada inteligente", icon=":material/auto_awesome:", type="secondary", key="btn_ai_dashboard", use_container_width=True):
+        exibir_modal_adicionar_transacao()
 
     with st.container(border=True):
         st.markdown('<div class="pw-section-eyebrow">Visão geral</div>', unsafe_allow_html=True)
