@@ -207,6 +207,31 @@ st.markdown("""
         min-height: 38px !important;
     }
 
+    /* Abas do modal Gemini: três botões com largura distribuída, sem herdar
+       as dimensões fixas das setas do seletor mensal. */
+    .entry-mode-row,
+    div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) button):not(:has(div[data-testid="stSelectbox"])) {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+    .entry-mode-row > div[data-testid="column"],
+    div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) button):not(:has(div[data-testid="stSelectbox"])) > div[data-testid="column"] {
+        flex: 1 1 0 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+    }
+    .entry-mode-row div.stButton,
+    .entry-mode-row div.stButton > button,
+    div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) button):not(:has(div[data-testid="stSelectbox"])) div.stButton,
+    div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) button):not(:has(div[data-testid="stSelectbox"])) div.stButton > button {
+        width: 100% !important;
+    }
+
     /* ESTILO FIXO DA LINHA DE TRANSAÇÕES (DESKTOP E MOBILE SEMPRE EM LINHA) */
     .tx-item-row {
         display: flex !important;
@@ -291,6 +316,20 @@ st.markdown("""
             min-width: 34px !important;
             width: 34px !important;
             padding: 0 !important;
+        }
+        .entry-mode-row {
+            gap: 6px !important;
+        }
+        .entry-mode-row > div[data-testid="column"] {
+            flex: 1 1 0 !important;
+            width: auto !important;
+            max-width: none !important;
+        }
+        .entry-mode-row div.stButton > button {
+            min-width: 0 !important;
+            width: 100% !important;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
         }
 
         /* Em vez de esconder a descrição e os metadados, a linha passa a
@@ -550,6 +589,10 @@ function setupMobileAndRowEnhancements() {
             const buttons = block.querySelectorAll('button');
             if (hasSelect && buttons.length === 2 && !block.classList.contains('month-picker-row')) {
                 block.classList.add('month-picker-row');
+            }
+            if (!hasSelect && buttons.length === 3) {
+                block.classList.remove('month-picker-row');
+                block.classList.add('entry-mode-row');
             }
 
             const icons = block.querySelectorAll('span[data-testid="stIconMaterial"]');
