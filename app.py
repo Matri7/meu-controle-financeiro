@@ -251,7 +251,8 @@ st.markdown("""
     @media (max-width: 768px) {
         /* O Streamlit empilha colunas no mobile por padrão. O seletor de mês
            precisa permanecer em uma única linha: seta, mês e seta. */
-        div[data-testid="stHorizontalBlock"].month-picker-row {
+        div[data-testid="stHorizontalBlock"].month-picker-row,
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) div[data-testid="stSelectbox"]):has(> div[data-testid="column"]:nth-child(3) button) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -260,33 +261,70 @@ st.markdown("""
             gap: 2px !important;
             width: 100% !important;
         }
-        .month-picker-row > div[data-testid="column"] {
+        .month-picker-row > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) div[data-testid="stSelectbox"]):has(> div[data-testid="column"]:nth-child(3) button) > div[data-testid="column"] {
             display: block !important;
             flex-direction: row !important;
             width: auto !important;
             min-width: 0 !important;
         }
         .month-picker-row > div[data-testid="column"]:nth-child(1),
-        .month-picker-row > div[data-testid="column"]:nth-child(3) {
+        .month-picker-row > div[data-testid="column"]:nth-child(3),
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) div[data-testid="stSelectbox"]):has(> div[data-testid="column"]:nth-child(3) button) > div[data-testid="column"]:nth-child(1),
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) div[data-testid="stSelectbox"]):has(> div[data-testid="column"]:nth-child(3) button) > div[data-testid="column"]:nth-child(3) {
             flex: 0 0 38px !important;
             width: 38px !important;
             max-width: 38px !important;
         }
-        .month-picker-row > div[data-testid="column"]:nth-child(2) {
+        .month-picker-row > div[data-testid="column"]:nth-child(2),
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) div[data-testid="stSelectbox"]):has(> div[data-testid="column"]:nth-child(3) button) > div[data-testid="column"]:nth-child(2) {
             flex: 1 1 auto !important;
             width: auto !important;
             max-width: none !important;
         }
-        .month-picker-row div[data-baseweb="select"] {
+        .month-picker-row div[data-baseweb="select"],
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) div[data-testid="stSelectbox"]):has(> div[data-testid="column"]:nth-child(3) button) div[data-baseweb="select"] {
             width: 100% !important;
         }
-        .month-picker-row button {
+        .month-picker-row button,
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(3) div[data-testid="stSelectbox"]):has(> div[data-testid="column"]:nth-child(3) button) button {
             min-width: 34px !important;
             width: 34px !important;
             padding: 0 !important;
         }
+
+        /* Em vez de esconder a descrição e os metadados, a linha passa a
+           ocupar duas linhas quando a largura do celular não é suficiente. */
+        .tx-item-row {
+            flex-wrap: wrap !important;
+            align-items: flex-start !important;
+            row-gap: 6px !important;
+        }
+        .tx-item-row > div[data-testid="column"]:nth-child(1) {
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: visible !important;
+        }
         .tx-item-row > div[data-testid="column"]:nth-child(2) {
-            min-width: 70px !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            text-align: left !important;
+            padding-right: 0 !important;
+        }
+        .tx-item-row > div[data-testid="column"]:nth-child(3),
+        .tx-item-row > div[data-testid="column"]:nth-child(4) {
+            flex: 0 0 34px !important;
+            width: 34px !important;
+            min-width: 34px !important;
+            max-width: 34px !important;
+        }
+        .tx-desc,
+        .tx-meta {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            overflow-wrap: anywhere !important;
         }
     }
 
