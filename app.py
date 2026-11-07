@@ -409,6 +409,105 @@ st.markdown("""
         margin-top: 12px;
         margin-bottom: 20px;
     }
+
+    /* Base visual da V2: dashboard inspirada no PocketWise, mantendo a
+       identidade escura e os acentos verde-menta do aplicativo atual. */
+    .pw-dashboard-hero {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #132b2c 0%, #102027 58%, #101c27 100%);
+        border: 1px solid rgba(94, 234, 212, 0.28);
+        border-radius: 22px;
+        padding: 28px 30px;
+        margin: 8px 0 18px;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+    }
+    .pw-dashboard-hero::after {
+        content: "";
+        position: absolute;
+        width: 240px;
+        height: 240px;
+        right: -80px;
+        top: -100px;
+        border-radius: 50%;
+        background: rgba(45, 212, 191, 0.12);
+        pointer-events: none;
+    }
+    .pw-eyebrow,
+    .pw-section-eyebrow {
+        color: #5eead4;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }
+    .pw-hero-title {
+        color: #e2e8f0;
+        font-size: 0.88rem;
+        margin-top: 6px;
+    }
+    .pw-hero-balance {
+        color: #f8fafc;
+        font-size: clamp(2rem, 5vw, 3.2rem);
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+        margin: 10px 0 4px;
+    }
+    .pw-hero-note {
+        color: #94a3b8;
+        font-size: 0.83rem;
+    }
+    .pw-progress {
+        height: 7px;
+        background: rgba(15, 23, 42, 0.72);
+        border-radius: 999px;
+        margin-top: 20px;
+        overflow: hidden;
+        max-width: 560px;
+    }
+    .pw-progress > div {
+        height: 100%;
+        background: linear-gradient(90deg, #2dd4bf, #34d399);
+        border-radius: inherit;
+    }
+    .pw-card-label {
+        color: #7b94a8;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+    .pw-card-value {
+        color: #f8fafc;
+        font-size: 1.55rem;
+        font-weight: 750;
+        margin-top: 7px;
+    }
+    .pw-card-note {
+        color: #64748b;
+        font-size: 0.76rem;
+        margin-top: 4px;
+    }
+    .pw-section-heading {
+        color: #f8fafc;
+        font-size: 1.18rem;
+        font-weight: 750;
+        margin: 3px 0 0;
+    }
+
+    @media (max-width: 768px) {
+        .pw-dashboard-hero {
+            border-radius: 16px;
+            padding: 22px 20px;
+        }
+        .pw-hero-balance {
+            font-size: 2.25rem;
+        }
+        .pw-card-value {
+            font-size: 1.25rem;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -918,15 +1017,32 @@ df_uber_mes = df_uber[df_uber['periodo_chave'] == mes_ativo].copy() if not df_ub
 
 # ----------------- ABA 1: VISÃO GERAL -----------------
 if aba == "Visão Geral":
-    renderizar_cabecalho_pagina(
-        breadcrumb_texto=f"• SUA SITUAÇÃO FINANCEIRA  /  {formatar_mes_extenso(mes_ativo, True)}",
-        titulo="Seu dinheiro, em foco.",
-        subtitulo="Visão em tempo real das suas receitas e despesas.",
-        acao_tipo="adicionar",
-        prefix="vg"
-    )
+    receitas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "receita"]["valor"].sum() if not df_mes_ativo.empty else 0.0
+    despesas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "despesa"]["valor"].sum() if not df_mes_ativo.empty else 0.0
+    saldo_mes = receitas_mes - despesas_mes
+    orcamento_total = float(df_orc["valor_teto"].sum()) if not df_orc.empty else 0.0
+    orcamento_restante = orcamento_total - despesas_mes
+    percentual_orcamento = min(max((despesas_mes / orcamento_total) * 100, 0), 100) if orcamento_total else 0
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.caption(f"SUA SITUAÇÃO FINANCEIRA  /  {formatar_mes_extenso(mes_ativo, True)}")
+    st.markdown(f"""
+    <div class="pw-dashboard-hero">
+        <div class="pw-eyebrow">Saldo após despesas</div>
+        <div class="pw-hero-title">Uma visão mais clara do seu dinheiro em {formatar_mes_extenso(mes_ativo).lower()}.</div>
+        <div class="pw-hero-balance">R$ {saldo_mes:,.2f}</div>
+        <div class="pw-hero-note">Receitas menos despesas no mês selecionado</div>
+        <div class="pw-progress"><div style="width: {percentual_orcamento:.1f}%;"></div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    c_month, c_act = st.columns([1.25, 0.95], vertical_alignment="center")
+    with c_month:
+        renderizar_seletor_mes_Global("vg")
+    with c_act:
+        if st.button("Adicionar", icon=":material/add:", type="primary", key="btn_add_vg_v2", use_container_width=True):
+            exibir_modal_adicionar_transacao()
+
+    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
     if not df.empty:
         hoje = datetime.today().date()
@@ -964,21 +1080,17 @@ if aba == "Visão Geral":
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    receitas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "receita"]["valor"].sum() if not df_mes_ativo.empty else 0.0
-    despesas_mes = df_mes_ativo[df_mes_ativo["tipo"] == "despesa"]["valor"].sum() if not df_mes_ativo.empty else 0.0
-    saldo_mes = receitas_mes - despesas_mes
-
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown(f'<div class="metric-card"><div class="metric-title">Saldo Líquido ({formatar_mes_extenso(mes_ativo)})</div><div class="metric-value metric-highlight">R$ {saldo_mes:,.2f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="pw-card-label">Receitas</div><div class="pw-card-value">R$ {receitas_mes:,.2f}</div><div class="pw-card-note">Entradas neste mês</div></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown(f'<div class="metric-card"><div class="metric-title">Receitas do Mês</div><div class="metric-value">R$ {receitas_mes:,.2f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="pw-card-label">Despesas</div><div class="pw-card-value">R$ {despesas_mes:,.2f}</div><div class="pw-card-note">Em todas as categorias</div></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown(f'<div class="metric-card"><div class="metric-title">Gastos Totais</div><div class="metric-value">R$ {despesas_mes:,.2f}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="pw-card-label">Orçamento restante</div><div class="pw-card-value">R$ {orcamento_restante:,.2f}</div><div class="pw-card-note">{percentual_orcamento:.0f}% do planejado utilizado</div></div>', unsafe_allow_html=True)
 
     with st.container(border=True):
-        st.caption("FLUXO DE CAIXA")
-        st.markdown("#### Evolução no tempo")
+        st.markdown('<div class="pw-section-eyebrow">Visão geral</div>', unsafe_allow_html=True)
+        st.markdown('<div class="pw-section-heading">Fluxo de caixa ao longo do tempo</div>', unsafe_allow_html=True)
         if not df.empty:
             df_temp = df.copy()
             col_filtro1, col_filtro2 = st.columns([2, 1.2])
@@ -1019,7 +1131,8 @@ if aba == "Visão Geral":
     col_g1, col_g2 = st.columns([1.2, 1])
     with col_g1:
         with st.container(border=True):
-            st.markdown("#### Últimos Lançamentos do Mês")
+            st.markdown('<div class="pw-section-eyebrow">Atividade recente</div>', unsafe_allow_html=True)
+            st.markdown('<div class="pw-section-heading">Últimos lançamentos</div>', unsafe_allow_html=True)
             if not df_mes_ativo.empty:
                 for _, r_vg in df_mes_ativo.head(5).iterrows():
                     cat_v = r_vg.get("categoria", "Outros")
@@ -1043,7 +1156,8 @@ if aba == "Visão Geral":
 
     with col_g2:
         with st.container(border=True):
-            st.markdown("#### Categorias do Mês")
+            st.markdown('<div class="pw-section-eyebrow">Para onde foi</div>', unsafe_allow_html=True)
+            st.markdown('<div class="pw-section-heading">Distribuição dos gastos</div>', unsafe_allow_html=True)
             despesas_mes_df = df_mes_ativo[df_mes_ativo["tipo"] == "despesa"] if not df_mes_ativo.empty else pd.DataFrame()
             if not despesas_mes_df.empty:
                 fig_pizza = renderizar_grafico_pizza(despesas_mes_df)
