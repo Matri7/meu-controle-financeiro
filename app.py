@@ -195,6 +195,10 @@ st.markdown("""
         flex: 1 1 auto !important;
         min-width: 140px !important;
     }
+    .month-picker-row > div[data-testid="column"] {
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+    }
     .month-picker-row div[data-baseweb="select"] {
         background-color: #101c27 !important;
         border: 1px solid #1e2f40 !important;
@@ -245,8 +249,41 @@ st.markdown("""
 
     /* REGRAS ESPECÍFICAS PARA TELAS MOBILE (<= 768px) */
     @media (max-width: 768px) {
-        .month-picker-row {
+        /* O Streamlit empilha colunas no mobile por padrão. O seletor de mês
+           precisa permanecer em uma única linha: seta, mês e seta. */
+        div[data-testid="stHorizontalBlock"].month-picker-row {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
             justify-content: center !important;
+            gap: 2px !important;
+            width: 100% !important;
+        }
+        .month-picker-row > div[data-testid="column"] {
+            display: block !important;
+            flex-direction: row !important;
+            width: auto !important;
+            min-width: 0 !important;
+        }
+        .month-picker-row > div[data-testid="column"]:nth-child(1),
+        .month-picker-row > div[data-testid="column"]:nth-child(3) {
+            flex: 0 0 38px !important;
+            width: 38px !important;
+            max-width: 38px !important;
+        }
+        .month-picker-row > div[data-testid="column"]:nth-child(2) {
+            flex: 1 1 auto !important;
+            width: auto !important;
+            max-width: none !important;
+        }
+        .month-picker-row div[data-baseweb="select"] {
+            width: 100% !important;
+        }
+        .month-picker-row button {
+            min-width: 34px !important;
+            width: 34px !important;
+            padding: 0 !important;
         }
         .tx-item-row > div[data-testid="column"]:nth-child(2) {
             min-width: 70px !important;
@@ -592,7 +629,14 @@ def on_select_mes(prefixo):
 
 def renderizar_seletor_mes_Global(key_prefix):
     """Seletor de mês: setas laterais + dropdown no centro com todos os meses do ano"""
-    idx_atual = LISTA_MESES_ORDENADA.index(st.session_state["mes_selecionado_global"])
+    mes_selecionado = st.session_state["mes_selecionado_global"]
+    idx_atual = LISTA_MESES_ORDENADA.index(mes_selecionado)
+    widget_key = f"sel_mes_{key_prefix}"
+
+    # O selectbox mantém seu próprio valor quando recebe uma key. Sem esta
+    # sincronização, clicar nas setas altera os dados exibidos, mas o texto do
+    # campo continua mostrando o mês anterior.
+    st.session_state[widget_key] = mes_selecionado
     
     col_p, col_sel, col_n = st.columns([1, 6, 1], vertical_alignment="center")
     with col_p:
@@ -606,7 +650,7 @@ def renderizar_seletor_mes_Global(key_prefix):
             options=LISTA_MESES_ORDENADA,
             format_func=lambda x: formatar_mes_extenso(x),
             index=idx_atual,
-            key=f"sel_mes_{key_prefix}",
+            key=widget_key,
             on_change=on_select_mes,
             args=(key_prefix,),
             label_visibility="collapsed"
