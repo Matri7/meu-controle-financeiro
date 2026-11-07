@@ -28,8 +28,16 @@ st.set_page_config(
 # Estilização CSS Cirúrgica e Totalmente Responsiva
 st.markdown("""
 <style>
-    .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #0b1118; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow-x: hidden !important; }
     
+    /* Previne vazamento horizontal no mobile */
+    div[data-testid="stMainBlockContainer"] {
+        max-width: 100% !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        overflow-x: hidden !important;
+    }
+
     /* Barra lateral */
     section[data-testid="stSidebar"] {
         background-color: #080d13 !important;
@@ -98,6 +106,7 @@ st.markdown("""
         color: #f1f5f9 !important;
     }
     
+    /* Retângulo Ativo na Sidebar */
     section[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
         background-color: #101c27 !important;
         color: #ffffff !important;
@@ -110,7 +119,7 @@ st.markdown("""
         color: #2dd4bf !important;
     }
 
-    /* FORÇA A COR VERDE-MENTA EM TODOS OS BOTÕES PRIMÁRIOS (ZERO VERMELHO/CORAL) */
+    /* BOTÃO PRIMÁRIO VERDE-MENTA */
     button[data-testid="baseButton-primary"],
     button[kind="primary"],
     div.stButton > button[kind="primary"],
@@ -121,7 +130,7 @@ st.markdown("""
         font-weight: 700 !important;
         border: none !important;
         border-radius: 10px !important;
-        box-shadow: 0 2px 8px rgba(52, 211, 153, 0.25) !important;
+        box-shadow: 0 2px 8px rgba(52, 211, 153, 0.20) !important;
     }
     button[data-testid="baseButton-primary"] p,
     button[kind="primary"] p,
@@ -134,12 +143,6 @@ st.markdown("""
     button[kind="primary"]:hover {
         background-color: #10b981 !important;
         background: #10b981 !important;
-        color: #ffffff !important;
-    }
-    button[data-testid="baseButton-primary"]:hover p,
-    button[kind="primary"]:hover p,
-    button[data-testid="baseButton-primary"]:hover span,
-    button[kind="primary"]:hover span {
         color: #ffffff !important;
     }
 
@@ -171,26 +174,28 @@ st.markdown("""
         color: #2dd4bf !important;
     }
 
-    /* TRAVA O SELETOR DE MÊS SEMPRE NA HORIZONTAL (DESKTOP E MOBILE) */
-    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) {
+    /* ESTILO FIXO DO SELETOR DE MÊS (DESKTOP E MOBILE SEMPRE EM LINHA) */
+    .month-picker-row {
         display: flex !important;
         flex-direction: row !important;
-        align-items: center !important;
         flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
         gap: 4px !important;
         width: 100% !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) > div[data-testid="column"]:nth-child(1),
-    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) > div[data-testid="column"]:nth-child(3) {
-        flex: 0 0 34px !important;
-        width: 34px !important;
-        min-width: 34px !important;
+    .month-picker-row > div[data-testid="column"]:nth-child(1),
+    .month-picker-row > div[data-testid="column"]:nth-child(3) {
+        flex: 0 0 36px !important;
+        width: 36px !important;
+        max-width: 36px !important;
+        min-width: 36px !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) > div[data-testid="column"]:nth-child(2) {
+    .month-picker-row > div[data-testid="column"]:nth-child(2) {
         flex: 1 1 auto !important;
-        min-width: 0 !important;
+        min-width: 140px !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key^="prev_"]) div[data-baseweb="select"] {
+    .month-picker-row div[data-baseweb="select"] {
         background-color: #101c27 !important;
         border: 1px solid #1e2f40 !important;
         border-radius: 10px !important;
@@ -198,37 +203,54 @@ st.markdown("""
         min-height: 38px !important;
     }
 
-    /* TRAVA A LINHA DA TRANSAÇÃO EM UMA LINHA HORIZONTAL ÚNICA (DESKTOP E MOBILE) */
-    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) {
+    /* ESTILO FIXO DA LINHA DE TRANSAÇÕES (DESKTOP E MOBILE SEMPRE EM LINHA) */
+    .tx-item-row {
         display: flex !important;
         flex-direction: row !important;
-        align-items: center !important;
         flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
         padding: 8px 0 !important;
         border-bottom: 1px solid #14202c !important;
         gap: 6px !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) > div[data-testid="column"]:nth-child(1) {
+    .tx-item-row > div[data-testid="column"]:nth-child(1) {
         flex: 1 1 auto !important;
         min-width: 0 !important;
+        overflow: hidden !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) > div[data-testid="column"]:nth-child(2) {
+    .tx-item-row > div[data-testid="column"]:nth-child(2) {
         flex: 0 0 auto !important;
-        min-width: 82px !important;
+        min-width: 80px !important;
         text-align: right !important;
+        white-space: nowrap !important;
+        padding-right: 4px !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) > div[data-testid="column"]:nth-child(3),
-    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) > div[data-testid="column"]:nth-child(4) {
+    .tx-item-row > div[data-testid="column"]:nth-child(3),
+    .tx-item-row > div[data-testid="column"]:nth-child(4) {
         flex: 0 0 32px !important;
         width: 32px !important;
         min-width: 32px !important;
+        max-width: 32px !important;
     }
-    div[data-testid="stHorizontalBlock"]:has(button[key^="ed_tx_"]) button {
+    .tx-item-row button {
+        width: 32px !important;
         height: 32px !important;
         min-height: 32px !important;
-        width: 32px !important;
-        margin: 0 !important;
         padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* REGRAS ESPECÍFICAS PARA TELAS MOBILE (<= 768px) */
+    @media (max-width: 768px) {
+        .month-picker-row {
+            justify-content: center !important;
+        }
+        .tx-item-row > div[data-testid="column"]:nth-child(2) {
+            min-width: 70px !important;
+        }
     }
 
     /* Badge de Contagem Verde */
@@ -315,39 +337,70 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Script JS: Recolhe a barra lateral no mobile automaticamente ao clicar em uma aba
+# Injetor JS: Fecha a sidebar no mobile e aplica classes nas linhas horizontais
 components.html("""
 <script>
-function bindMobileSidebarClose() {
+function setupMobileAndRowEnhancements() {
     try {
         const parentDoc = window.parent.document;
         if (!parentDoc) return;
-
         const isMobile = window.parent.innerWidth <= 768;
-        if (!isMobile) return;
 
-        const navBtns = parentDoc.querySelectorAll('section[data-testid="stSidebar"] div.stButton > button');
-        navBtns.forEach(btn => {
-            if (!btn.dataset.mobileCloseBound) {
-                btn.dataset.mobileCloseBound = "true";
-                btn.addEventListener('click', () => {
-                    setTimeout(() => {
-                        const backdrop = parentDoc.querySelector('[data-testid="stSidebarBackdrop"]');
-                        if (backdrop) {
-                            backdrop.click();
-                        } else {
-                            const closeBtn = parentDoc.querySelector('[data-testid="stSidebarCollapseButton"] button') ||
-                                             parentDoc.querySelector('button[aria-label="Close sidebar"]') ||
-                                             parentDoc.querySelector('[data-testid="stSidebarCollapseButton"]');
-                            if (closeBtn) closeBtn.click();
-                        }
-                    }, 60);
-                });
+        // 1. Tagging de linhas para garantir flexbox horizontal em qualquer tela
+        parentDoc.querySelectorAll('div[data-testid="stHorizontalBlock"]').forEach(block => {
+            const hasSelect = block.querySelector('div[data-testid="stSelectbox"]');
+            const buttons = block.querySelectorAll('button');
+            if (hasSelect && buttons.length === 2 && !block.classList.contains('month-picker-row')) {
+                block.classList.add('month-picker-row');
+            }
+
+            const icons = block.querySelectorAll('span[data-testid="stIconMaterial"]');
+            let isTx = false;
+            icons.forEach(ic => {
+                if (ic.textContent.includes('edit') || ic.textContent.includes('delete')) isTx = true;
+            });
+            if (isTx && !block.classList.contains('tx-item-row')) {
+                block.classList.add('tx-item-row');
             }
         });
+
+        // 2. Fechamento automático da sidebar no mobile ao clicar em abas
+        if (isMobile) {
+            const navButtons = parentDoc.querySelectorAll('section[data-testid="stSidebar"] div.stButton > button');
+            navButtons.forEach(btn => {
+                if (!btn.dataset.autoCloseAttached) {
+                    btn.dataset.autoCloseAttached = "true";
+                    btn.addEventListener('click', () => {
+                        sessionStorage.setItem('just_navigated_mobile', 'true');
+                        closeSidebarMobile(parentDoc);
+                    });
+                }
+            });
+
+            if (sessionStorage.getItem('just_navigated_mobile') === 'true') {
+                sessionStorage.removeItem('just_navigated_mobile');
+                setTimeout(() => { closeSidebarMobile(parentDoc); }, 150);
+            }
+        }
     } catch(e) {}
 }
-setInterval(bindMobileSidebarClose, 300);
+
+function closeSidebarMobile(parentDoc) {
+    try {
+        const backdrop = parentDoc.querySelector('[data-testid="stSidebarBackdrop"]');
+        if (backdrop && backdrop.offsetParent !== null) {
+            backdrop.click();
+            return;
+        }
+        const closeBtn = parentDoc.querySelector('section[data-testid="stSidebar"] button[data-testid="stBaseButton-header"]') ||
+                         parentDoc.querySelector('[data-testid="stSidebarCollapseButton"] button') ||
+                         parentDoc.querySelector('button[aria-label="Close sidebar"]') ||
+                         parentDoc.querySelector('button[aria-label="Fechar barra lateral"]');
+        if (closeBtn) closeBtn.click();
+    } catch(e) {}
+}
+
+setInterval(setupMobileAndRowEnhancements, 200);
 </script>
 """, height=0, width=0)
 
@@ -360,26 +413,19 @@ def parse_moeda_flexivel(val):
     txt = str(val).replace("R$", "").replace("r$", "").strip()
     if not txt:
         return 0.0
-    if "," in txt:
-        if "." in txt:
-            txt = txt.replace(".", "").replace(",", ".")
-        else:
-            txt = txt.replace(",", ".")
-        try:
-            return float(txt)
-        except ValueError:
-            pass
-    elif "." in txt:
-        try:
-            return float(txt)
-        except ValueError:
-            pass
-    digits = "".join(c for c in txt if c.isdigit())
-    if digits:
-        try:
-            return float(digits)
-        except ValueError:
-            return 0.0
+    if "." in txt and "," in txt:
+        txt = txt.replace(".", "").replace(",", ".")
+    elif "," in txt:
+        txt = txt.replace(",", ".")
+    try:
+        return float(txt)
+    except ValueError:
+        digits = "".join(c for c in txt if c.isdigit())
+        if digits:
+            try:
+                return float(digits)
+            except ValueError:
+                return 0.0
     return 0.0
 
 def parse_hora_flexivel(texto_hora):
@@ -520,7 +566,6 @@ if not df_uber.empty:
     df_uber['periodo_chave'] = df_uber['data_dt'].dt.strftime('%Y-%m')
     meses_disponiveis.update(df_uber['periodo_chave'].dropna().tolist())
 
-# Popula o ano completo (Janeiro a Dezembro)
 ano_hoje = datetime.today().year
 for m_idx in range(1, 13):
     meses_disponiveis.add(f"{ano_hoje}-{m_idx:02d}")
@@ -577,7 +622,7 @@ def renderizar_cabecalho_pagina(breadcrumb_texto, titulo, subtitulo, acao_tipo=N
     st.caption(breadcrumb_texto)
     col_title_box, col_actions_box = st.columns([1.6, 1.4], vertical_alignment="center")
     with col_title_box:
-        st.markdown(f"<h2 style='margin:0; font-size:1.75rem; font-weight:700; color:#fff;'>{titulo}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='margin:0 0 2px 0; font-size:1.75rem; font-weight:700; color:#fff;'>{titulo}</h2>", unsafe_allow_html=True)
         st.caption(subtitulo)
     with col_actions_box:
         if acao_tipo:
